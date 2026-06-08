@@ -6,9 +6,11 @@ import SwiftUI
 
 @main
 struct TakeHomeApp: App {
+    @State private var diContainer = DIContainer()
+
     var body: some Scene {
         WindowGroup {
-            HomeView()
+            RootView(diContainer: diContainer)
         }
     }
 }
