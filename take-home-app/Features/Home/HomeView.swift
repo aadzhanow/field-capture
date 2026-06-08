@@ -1,13 +1,10 @@
 //
-//  ContentView.swift
-//  take-home-app
-//
-//  Created by Alisher on 08.06.2026.
+//  HomeView.swift
 //
 
 import SwiftUI
 
-struct ContentView: View {
+struct HomeView: View {
     var body: some View {
         VStack {
             Image(systemName: "globe")
@@ -20,5 +17,5 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
+    HomeView()
 }
