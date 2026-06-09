@@ -68,26 +68,33 @@ struct NewItemView: View {
         }
     }
 
+    private func sourceLabel(_ title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .glassEffectIfAvailable(.blue, in: .capsule)
+    }
+
     private var photosSection: some View {
         Section {
             HStack(spacing: 12) {
                 Button {
                     showingCamera = true
                 } label: {
-                    Label("Take Photo", systemImage: "camera")
-                        .frame(maxWidth: .infinity)
+                    sourceLabel("Take Photo", systemImage: "camera")
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.plain)
 
                 PhotosPicker(
                     selection: $pickerItems,
                     matching: .images,
                     photoLibrary: .shared()
                 ) {
-                    Label("Library", systemImage: "photo.on.rectangle")
-                        .frame(maxWidth: .infinity)
+                    sourceLabel("Library", systemImage: "photo.on.rectangle")
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.plain)
             }
 
             if isImporting {
