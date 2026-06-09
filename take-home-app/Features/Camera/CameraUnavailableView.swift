@@ -35,6 +35,7 @@ struct CameraUnavailableView: View {
                     .buttonStyle(.bordered)
                 }
             }
+            .tint(.blue)
             .padding(.top, 8)
         }
         .foregroundStyle(.white)
