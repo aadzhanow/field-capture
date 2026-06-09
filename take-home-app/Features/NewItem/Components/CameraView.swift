@@ -190,7 +190,7 @@ final class CameraController {
 /// queue. Deliberately **not** main-actor isolated, so its queue closures can
 /// touch the session directly without crossing an isolation boundary. Mutable
 /// state (`delegates`) is only ever touched on `queue`, hence `@unchecked Sendable`.
-private final class CaptureSessionManager: @unchecked Sendable {
+private nonisolated final class CaptureSessionManager: @unchecked Sendable {
     let session = AVCaptureSession()
     private let photoOutput = AVCapturePhotoOutput()
     private let queue = DispatchQueue(label: "com.take-home-app.camera.session")
@@ -243,7 +243,7 @@ private final class CaptureSessionManager: @unchecked Sendable {
     }
 }
 
-private final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
+private nonisolated final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
     private let completion: (Data?) -> Void
 
     init(completion: @escaping (Data?) -> Void) {
