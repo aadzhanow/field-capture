@@ -11,29 +11,31 @@ enum ViewState<Content> {
     case error(String)
 }
 
-struct StateContainer<Value, Loaded: View, Empty: View>: View {
+struct StateContainer<Value, Loaded: View, Empty: View, Loading: View>: View {
     let state: ViewState<Value>
     var retry: (() -> Void)?
     @ViewBuilder var loaded: (Value) -> Loaded
     @ViewBuilder var empty: () -> Empty
+    @ViewBuilder var loading: () -> Loading
 
     init(
         _ state: ViewState<Value>,
         retry: (() -> Void)? = nil,
         @ViewBuilder loaded: @escaping (Value) -> Loaded,
-        @ViewBuilder empty: @escaping () -> Empty
+        @ViewBuilder empty: @escaping () -> Empty,
+        @ViewBuilder loading: @escaping () -> Loading
     ) {
         self.state = state
         self.retry = retry
         self.loaded = loaded
         self.empty = empty
+        self.loading = loading
     }
 
     var body: some View {
         switch state {
         case .loading:
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            loading()
         case .empty:
             empty()
         case .loaded(let value):
@@ -41,6 +43,25 @@ struct StateContainer<Value, Loaded: View, Empty: View>: View {
         case .error(let message):
             ErrorStateView(message: message, retry: retry)
         }
+    }
+}
+
+// Default loading view (a centered spinner) when no custom one is supplied.
+extension StateContainer where Loading == DefaultLoadingView {
+    init(
+        _ state: ViewState<Value>,
+        retry: (() -> Void)? = nil,
+        @ViewBuilder loaded: @escaping (Value) -> Loaded,
+        @ViewBuilder empty: @escaping () -> Empty
+    ) {
+        self.init(state, retry: retry, loaded: loaded, empty: empty, loading: { DefaultLoadingView() })
+    }
+}
+
+struct DefaultLoadingView: View {
+    var body: some View {
+        ProgressView()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

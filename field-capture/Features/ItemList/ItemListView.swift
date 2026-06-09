@@ -28,6 +28,8 @@ struct ItemListView: View {
                 )
             } empty: {
                 EmptyItemListView()
+            } loading: {
+                ItemListSkeleton()
             }
             .navigationTitle("Item List")
             .navigationDestination(for: String.self) { itemID in
