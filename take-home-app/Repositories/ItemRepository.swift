@@ -233,13 +233,80 @@ nonisolated final class ItemRepository: Sendable {
                                            WHERE p.itemId = item.id
                                            ORDER BY p.sortOrder ASC LIMIT 1)
                         AND d.kind = 'thumbnail' AND d.statusRaw = 'ready'
-                      LIMIT 1) AS representativeThumbnailPath
+                      LIMIT 1) AS representativeThumbnailPath,
+                   (SELECT COUNT(*) FROM derivative d
+                      JOIN photo p ON p.id = d.photoId
+                     WHERE p.itemId = item.id) AS derivativeTotal,
+                   (SELECT COUNT(*) FROM derivative d
+                      JOIN photo p ON p.id = d.photoId
+                     WHERE p.itemId = item.id AND d.statusRaw = 'ready') AS derivativeReady,
+                   (SELECT COUNT(*) FROM derivative d
+                      JOIN photo p ON p.id = d.photoId
+                     WHERE p.itemId = item.id AND d.statusRaw = 'failed') AS derivativeFailed
               FROM item
               LEFT JOIN photo ON photo.itemId = item.id
              GROUP BY item.id
              ORDER BY item.createdAt DESC
             """)
         return rows.map(\.galleryItem)
+    }
+
+    func observeItemDetail(
+        itemID: String,
+        onChange: @escaping @MainActor (ItemDetail?) -> Void,
+        onError: @escaping @MainActor (Error) -> Void
+    ) -> AnyDatabaseCancellable {
+        let observation = ValueObservation.tracking { db in
+            try ItemRepository.fetchItemDetail(db, itemID: itemID)
+        }
+        return observation.start(
+            in: dbWriter,
+            onError: { error in MainActor.assumeIsolated { onError(error) } },
+            onChange: { detail in MainActor.assumeIsolated { onChange(detail) } }
+        )
+    }
+
+    static func fetchItemDetail(_ db: Database, itemID: String) throws -> ItemDetail? {
+        guard let item = try Item.fetchOne(db, key: itemID) else { return nil }
+
+        let photos = try Photo
+            .filter(Photo.Columns.itemId == itemID)
+            .order(Photo.Columns.sortOrder)
+            .fetchAll(db)
+        let derivatives = try Derivative
+            .filter(photos.map(\.id).contains(Derivative.Columns.photoId))
+            .fetchAll(db)
+        let byPhoto = Dictionary(grouping: derivatives, by: \.photoId)
+
+        // Stable ordering by DerivativeKind declaration order.
+        let order = Dictionary(
+            uniqueKeysWithValues: DerivativeKind.allCases.enumerated().map { ($1.rawValue, $0) }
+        )
+        let detailPhotos = photos.map { photo in
+            let rows = (byPhoto[photo.id] ?? [])
+                .sorted { (order[$0.kind] ?? .max) < (order[$1.kind] ?? .max) }
+                .compactMap { derivative -> DetailDerivative? in
+                    guard let kind = derivative.kindEnum else { return nil }
+                    return DetailDerivative(
+                        id: derivative.id,
+                        kind: kind,
+                        status: derivative.status,
+                        path: derivative.path,
+                        byteCount: derivative.byteCount
+                    )
+                }
+            return DetailPhoto(id: photo.id, sortOrder: photo.sortOrder, derivatives: rows)
+        }
+
+        return ItemDetail(
+            id: item.id,
+            title: item.title,
+            notes: item.notes,
+            createdAt: item.createdDate,
+            eligibleAt: item.eligibleAt,
+            processingStatusRaw: item.processingStatusRaw,
+            photos: detailPhotos
+        )
     }
 
     #if DEBUG
@@ -266,6 +333,9 @@ private nonisolated struct GalleryItemRow: Decodable, FetchableRecord {
     var photoCount: Int
     var representativeCardPath: String?
     var representativeThumbnailPath: String?
+    var derivativeTotal: Int
+    var derivativeReady: Int
+    var derivativeFailed: Int
 
     var galleryItem: GalleryItem {
         GalleryItem(
@@ -275,7 +345,10 @@ private nonisolated struct GalleryItemRow: Decodable, FetchableRecord {
             photoCount: photoCount,
             processingStatusRaw: processingStatusRaw,
             representativeCardPath: representativeCardPath,
-            representativeThumbnailPath: representativeThumbnailPath
+            representativeThumbnailPath: representativeThumbnailPath,
+            derivativeTotal: derivativeTotal,
+            derivativeReady: derivativeReady,
+            derivativeFailed: derivativeFailed
         )
     }
 }

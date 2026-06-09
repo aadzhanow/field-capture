@@ -23,16 +23,17 @@ struct StatusBadge: View {
 }
 
 extension StatusBadge {
-    /// Item-level badge for a gallery card.
-    ///
-    /// P2 only ever produces `notReady` right after save (derivatives pending),
-    /// which §9 shows as "Assets Processing". The asset/age-aware distinctions
-    /// (Assets Failed, Waiting Until Eligible, Ready to Process) and the full
-    /// processing states land in P4/P5 as `AssetStatus` and the gates arrive.
     static func forGalleryItem(_ item: GalleryItem) -> StatusBadge {
-        switch item.processingStatus {
-        case .notReady:
-            StatusBadge(text: "Assets Processing", systemImage: "clock.arrow.2.circlepath", tint: .orange)
+        forItem(processingStatus: item.processingStatus, assetStatus: item.assetStatus)
+    }
+
+    /// The item-level §9 badge. The processing states take precedence; while the
+    /// item is still `notReady` the badge reflects the derived asset status —
+    /// "Assets Failed" if any derivative failed, "Assets Processing" while still
+    /// generating, and "Waiting Until Eligible" once assets are complete but the
+    /// 8h window hasn't passed (a complete item is only `notReady` when young).
+    static func forItem(processingStatus: ProcessingStatus, assetStatus: AssetStatus) -> StatusBadge {
+        switch processingStatus {
         case .ready:
             StatusBadge(text: "Ready to Process", systemImage: "checkmark.circle", tint: .blue)
         case .processing:
@@ -41,6 +42,29 @@ extension StatusBadge {
             StatusBadge(text: "Processing Failed", systemImage: "exclamationmark.triangle.fill", tint: .red)
         case .done:
             StatusBadge(text: "Done", systemImage: "checkmark.seal.fill", tint: .green)
+        case .notReady:
+            switch assetStatus {
+            case .failed:
+                StatusBadge(text: "Assets Failed", systemImage: "exclamationmark.triangle.fill", tint: .red)
+            case .complete:
+                StatusBadge(text: "Waiting Until Eligible", systemImage: "hourglass", tint: .orange)
+            case .processing, .incomplete:
+                StatusBadge(text: "Assets Processing", systemImage: "clock.arrow.2.circlepath", tint: .orange)
+            }
+        }
+    }
+
+    /// Asset-level pill for the detail screen (per-photo and item header).
+    static func forAsset(_ status: AssetStatus) -> StatusBadge {
+        switch status {
+        case .complete:
+            StatusBadge(text: "Complete", systemImage: "checkmark.circle.fill", tint: .green)
+        case .processing:
+            StatusBadge(text: "Processing", systemImage: "clock.arrow.2.circlepath", tint: .orange)
+        case .incomplete:
+            StatusBadge(text: "Incomplete", systemImage: "circle.dashed", tint: .secondary)
+        case .failed:
+            StatusBadge(text: "Failed", systemImage: "exclamationmark.triangle.fill", tint: .red)
         }
     }
 }

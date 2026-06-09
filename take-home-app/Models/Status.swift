@@ -45,3 +45,26 @@ enum AssetStatus: Sendable {
     case incomplete
     case complete
 }
+
+extension AssetStatus {
+    /// Photo-level: derived from a photo's derivative statuses. An over-limit
+    /// derivative is already persisted as `failed` by the generator, so it lands
+    /// here as `.failed` rather than silently looping.
+    /// Precedence: failed > incomplete (missing rows) > processing (pending) > complete.
+    nonisolated static func forPhoto(statuses: [DerivativeStatus]) -> AssetStatus {
+        let expected = DerivativeKind.allCases.count
+        if statuses.contains(.failed) { return .failed }
+        if statuses.count < expected { return .incomplete }
+        return statuses.allSatisfy { $0 == .ready } ? .complete : .processing
+    }
+
+    /// Item-level: derived from aggregate derivative counts across all photos.
+    /// An item is asset-complete only when every photo has all five derivatives
+    /// ready (§6 derivative-completeness gate).
+    nonisolated static func forItem(photoCount: Int, total: Int, ready: Int, failed: Int) -> AssetStatus {
+        let expected = photoCount * DerivativeKind.allCases.count
+        if failed > 0 { return .failed }
+        if photoCount == 0 || total < expected { return .incomplete }
+        return ready == expected ? .complete : .processing
+    }
+}

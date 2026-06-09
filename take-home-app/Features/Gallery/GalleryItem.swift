@@ -16,9 +16,24 @@ nonisolated struct GalleryItem: Identifiable, Equatable, Sendable {
     let representativeCardPath: String?
     /// `thumbnail`-kind derivative path for the representative photo; nil until ready.
     let representativeThumbnailPath: String?
+    /// Aggregate derivative counts across all of the item's photos, for the
+    /// derived item-level asset status.
+    let derivativeTotal: Int
+    let derivativeReady: Int
+    let derivativeFailed: Int
 
     var processingStatus: ProcessingStatus {
         ProcessingStatus(rawValue: processingStatusRaw) ?? .notReady
+    }
+
+    /// Item-level asset status derived from the aggregate derivative counts.
+    var assetStatus: AssetStatus {
+        AssetStatus.forItem(
+            photoCount: photoCount,
+            total: derivativeTotal,
+            ready: derivativeReady,
+            failed: derivativeFailed
+        )
     }
 
     /// Card image precedence: `card → thumbnail → placeholder`.
