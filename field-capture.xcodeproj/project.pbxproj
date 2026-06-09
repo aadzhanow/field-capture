@@ -10,14 +10,30 @@
 		746132152FD76C2E0022BC77 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 746132142FD76C2E0022BC77 /* GRDB */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		AA10000000000000000000F8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 746131F82FD76A220022BC77 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 746131FF2FD76A220022BC77;
+			remoteInfo = "field-capture";
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		746132002FD76A220022BC77 /* field-capture.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "field-capture.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA10000000000000000000F1 /* field-captureTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "field-captureTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		746132022FD76A220022BC77 /* field-capture */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "field-capture";
+			sourceTree = "<group>";
+		};
+		AA10000000000000000000F2 /* take-home-appTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "take-home-appTests";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -31,6 +47,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AA10000000000000000000F4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -38,6 +61,7 @@
 			isa = PBXGroup;
 			children = (
 				746132022FD76A220022BC77 /* field-capture */,
+				AA10000000000000000000F2 /* take-home-appTests */,
 				746132012FD76A220022BC77 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -46,6 +70,7 @@
 			isa = PBXGroup;
 			children = (
 				746132002FD76A220022BC77 /* field-capture.app */,
+				AA10000000000000000000F1 /* field-captureTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -76,6 +101,29 @@
 			productReference = 746132002FD76A220022BC77 /* field-capture.app */;
 			productType = "com.apple.product-type.application";
 		};
+		AA10000000000000000000F6 /* field-captureTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AA10000000000000000000F9 /* Build configuration list for PBXNativeTarget "field-captureTests" */;
+			buildPhases = (
+				AA10000000000000000000F3 /* Sources */,
+				AA10000000000000000000F4 /* Frameworks */,
+				AA10000000000000000000F5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AA10000000000000000000F7 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				AA10000000000000000000F2 /* take-home-appTests */,
+			);
+			name = "field-captureTests";
+			packageProductDependencies = (
+			);
+			productName = "field-captureTests";
+			productReference = AA10000000000000000000F1 /* field-captureTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -88,6 +136,10 @@
 				TargetAttributes = {
 					746131FF2FD76A220022BC77 = {
 						CreatedOnToolsVersion = 26.5;
+					};
+					AA10000000000000000000F6 = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = 746131FF2FD76A220022BC77;
 					};
 				};
 			};
@@ -109,12 +161,20 @@
 			projectRoot = "";
 			targets = (
 				746131FF2FD76A220022BC77 /* field-capture */,
+				AA10000000000000000000F6 /* field-captureTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		746131FE2FD76A220022BC77 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA10000000000000000000F5 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -131,7 +191,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AA10000000000000000000F3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		AA10000000000000000000F7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 746131FF2FD76A220022BC77 /* field-capture */;
+			targetProxy = AA10000000000000000000F8 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		746132092FD76A230022BC77 /* Debug */ = {
@@ -329,6 +404,52 @@
 			};
 			name = Release;
 		};
+		AA10000000000000000000FA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = QU8K7VX6B7;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.take-home-app.tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/field-capture.app/field-capture";
+			};
+			name = Debug;
+		};
+		AA10000000000000000000FB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = QU8K7VX6B7;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.take-home-app.tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/field-capture.app/field-capture";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -350,6 +471,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		AA10000000000000000000F9 /* Build configuration list for PBXNativeTarget "field-captureTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA10000000000000000000FA /* Debug */,
+				AA10000000000000000000FB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -357,8 +487,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/groue/GRDB.swift.git";
 			requirement = {
-				branch = master;
-				kind = branch;
+				kind = revision;
+				revision = 9ed8c8457e00ff9c7aedb3bf213f20a2cfdf509e;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
