@@ -69,7 +69,6 @@ nonisolated final class ItemRepository: Sendable {
             processingStatusRaw: ProcessingStatus.notReady.rawValue
         )
 
-        // stage-then-commit: files first, then one atomic DB transaction
         let rows = photoRows
         do {
             try await dbWriter.write { db in
@@ -93,19 +92,18 @@ nonisolated final class ItemRepository: Sendable {
             throw error
         }
 
+        Log.dataInfo("Saved item \(itemID) with \(rows.count) photo(s)")
         return itemID
     }
 
     // MARK: - Delete
 
     func deleteItem(id: String) async throws {
-        // DB first (CASCADE drops photos, derivatives, and the processing job),
-        // then the on-disk files — so a crash leaves at worst orphan files, never
-        // rows pointing at deleted files.
         try await dbWriter.write { db in
             try db.execute(sql: "DELETE FROM item WHERE id = ?", arguments: [id])
         }
         fileStorage.deleteItemFiles(itemID: id)
+        Log.dataInfo("Deleted item \(id)")
     }
 
     // MARK: - Derivative pipeline support
@@ -176,10 +174,6 @@ nonisolated final class ItemRepository: Sendable {
         }
     }
 
-    /// Single source of truth for "derivative-complete" (§5/§6): every photo has
-    /// all five derivatives `ready`, each with a stored file ≤ 700KB. A derivative
-    /// only reaches `ready` after an atomic write under the cap, so this also
-    /// rejects any row missing a path or over the limit.
     static func isDerivativeComplete(_ db: Database, itemID: String) throws -> Bool {
         let counts = try CompletionCounts.fetchOne(db, sql: """
             SELECT (SELECT COUNT(*) FROM photo WHERE itemId = :id) AS photoCount,

@@ -26,15 +26,12 @@ nonisolated final class RecoveryService: Sendable {
         try? await processingRepository.resetStuckJobs()
         await reconcileMissingDerivativeFiles()
         let itemIDs = (try? await itemRepository.itemIDsWithUnfinishedDerivatives()) ?? []
+        Log.processingInfo("Recovery: resuming \(itemIDs.count) item(s) with unfinished derivatives")
         for itemID in itemIDs {
             await processingEngine.enqueue(itemID: itemID)
         }
     }
 
-    // A `ready` derivative whose file has vanished → back to `pending` to regenerate.
-    // We deliberately do not delete on-disk files with no DB row: a staged-but-
-    // uncommitted save could be running concurrently, and deleting its originals
-    // would corrupt a just-saved item. Orphans (rare) are harmless wasted disk.
     private func reconcileMissingDerivativeFiles() async {
         guard let refs = try? await itemRepository.readyDerivativeFileRefs() else { return }
         let missingIDs = refs.filter { !fileStorage.exists($0.path) }.map(\.id)

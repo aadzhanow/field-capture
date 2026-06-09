@@ -11,26 +11,25 @@ struct RootView: View {
         ItemListView(diContainer: diContainer)
             .task {
                 #if DEBUG
-                printContainerPaths()
+                logContainerPaths()
                 #endif
                 await diContainer.recoveryService.recover()
             }
     }
 
     #if DEBUG
-    private func printContainerPaths() {
+    private func logContainerPaths() {
         let documents = try? FileManager.default.url(
             for: .documentDirectory,
             in: .userDomainMask,
             appropriateFor: nil,
             create: false
         )
-        print("📦 App container")
-        print("Home: \(NSHomeDirectory())")
+        Log.appDebug("📦 App container — Home: \(NSHomeDirectory())")
         if let documents {
-            print("Documents: \(documents.path)")
-            print("Database: \(documents.appendingPathComponent(Constants.databaseFileName).path)")
-            print("Images: \(documents.appendingPathComponent(Constants.imagesDirectoryName).path)")
+            Log.appDebug("Documents: \(documents.path)")
+            Log.appDebug("Database: \(documents.appendingPathComponent(Constants.databaseFileName).path)")
+            Log.appDebug("Images: \(documents.appendingPathComponent(Constants.imagesDirectoryName).path)")
         }
     }
     #endif

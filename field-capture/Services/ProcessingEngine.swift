@@ -43,6 +43,8 @@ actor ProcessingEngine {
             return
         }
 
+        Log.processingInfo("Generating \(work.count) derivative(s) for item \(itemID)")
+
         let storage = fileStorage
         let generator = generator
         let repository = itemRepository
@@ -67,12 +69,10 @@ actor ProcessingEngine {
             }
         }
 
+        Log.processingInfo("Finished derivatives for item \(itemID)")
         try? await itemRepository.recomputeProcessingStatus(itemID: itemID)
     }
 
-    // `nonisolated static`: runs on the cooperative pool. Write-then-flip ordering:
-    // the row is marked `ready` only after the file is on disk, so a crash leaves
-    // the row `pending` rather than a partial file marked `ready`.
     private nonisolated static func generateOne(
         _ work: DerivativeWork,
         itemID: String,
@@ -91,6 +91,7 @@ actor ProcessingEngine {
                 id: work.derivativeID, path: relativePath, byteCount: derivativeData.count
             )
         } catch {
+            Log.processingError("Derivative \(work.kind.rawValue) failed for item \(itemID)")
             try? await repository.markDerivativeFailed(id: work.derivativeID)
         }
     }
@@ -115,22 +116,25 @@ actor ProcessingEngine {
             return
         }
 
-        // Persist before the await so a crash leaves a recoverable record, not a lost attempt.
         do {
             try await processingRepository.beginAttempt(itemID: itemID)
         } catch {
             return
         }
 
+        Log.processingInfo("Submitting item \(itemID) for processing")
+
         let urls = context.processingPaths.map { fileStorage.url(for: $0) }
         do {
             let outcome = try await processingService.process(processingFiles: urls)
+            Log.processingInfo("Item \(itemID) processing \(outcome == .success ? "succeeded" : "failed")")
             try? await processingRepository.finishAttempt(
                 itemID: itemID,
                 success: outcome == .success,
                 lastError: outcome == .success ? nil : "Processing failed. Please retry."
             )
         } catch {
+            Log.processingError("Item \(itemID) processing error: \(error.localizedDescription)")
             try? await processingRepository.finishAttempt(
                 itemID: itemID,
                 success: false,
