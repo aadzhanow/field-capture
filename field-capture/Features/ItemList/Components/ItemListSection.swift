@@ -1,21 +1,21 @@
 //
-//  GallerySection.swift
+//  ItemListSection.swift
 //
 
 import Foundation
 
-struct GallerySection: Identifiable, Equatable {
+struct ItemListSection: Identifiable, Equatable {
     let id: String
     let title: String
-    let items: [GalleryItem]
+    let items: [ItemListItem]
 }
 
-extension GallerySection {
-    static func group(_ items: [GalleryItem]) -> [GallerySection] {
+extension ItemListSection {
+    static func group(_ items: [ItemListItem]) -> [ItemListSection] {
         let calendar = Calendar.current
         let byDay = Dictionary(grouping: items) { calendar.startOfDay(for: $0.createdAt) }
         return byDay.keys.sorted(by: >).map { day in
-            GallerySection(
+            ItemListSection(
                 id: String(day.timeIntervalSince1970),
                 title: title(for: day, calendar: calendar),
                 items: (byDay[day] ?? []).sorted { $0.createdAt > $1.createdAt }

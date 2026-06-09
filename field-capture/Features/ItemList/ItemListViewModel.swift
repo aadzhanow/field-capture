@@ -1,5 +1,5 @@
 //
-//  GalleryViewModel.swift
+//  ItemListViewModel.swift
 //
 
 import Foundation
@@ -7,9 +7,9 @@ import GRDB
 
 @Observable
 @MainActor
-final class GalleryViewModel {
+final class ItemListViewModel {
     private let itemRepository: ItemRepository
-    private(set) var state: ViewState<[GallerySection]> = .loading
+    private(set) var state: ViewState<[ItemListSection]> = .loading
 
     @ObservationIgnored private var cancellable: AnyDatabaseCancellable?
 
@@ -19,14 +19,14 @@ final class GalleryViewModel {
 
     func start() {
         guard cancellable == nil else { return }
-        cancellable = itemRepository.observeGalleryItems(
+        cancellable = itemRepository.observeItemListItems(
             onChange: { [weak self] items in self?.apply(items) },
             onError: { [weak self] error in self?.state = .error(error.localizedDescription) }
         )
     }
 
-    private func apply(_ items: [GalleryItem]) {
-        state = items.isEmpty ? .empty : .loaded(GallerySection.group(items))
+    private func apply(_ items: [ItemListItem]) {
+        state = items.isEmpty ? .empty : .loaded(ItemListSection.group(items))
     }
 
     func refreshEligibility() async {

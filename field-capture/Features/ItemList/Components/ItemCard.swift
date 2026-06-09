@@ -1,11 +1,11 @@
 //
-//  GalleryCard.swift
+//  ItemCard.swift
 //
 
 import SwiftUI
 
-struct GalleryCard: View {
-    let item: GalleryItem
+struct ItemCard: View {
+    let item: ItemListItem
     let fileStorage: FileStorage
 
     var body: some View {
@@ -27,7 +27,7 @@ struct GalleryCard: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 
-                StatusBadge.forGalleryItem(item)
+                StatusBadge.forItemListItem(item)
             }
 
             Spacer(minLength: 0)

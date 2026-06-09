@@ -1,10 +1,10 @@
 //
-//  GalleryItem.swift
+//  ItemListItem.swift
 //
 
 import Foundation
 
-nonisolated struct GalleryItem: Identifiable, Equatable, Sendable {
+nonisolated struct ItemListItem: Identifiable, Equatable, Sendable {
     let id: String
     let title: String
     let createdAt: Date

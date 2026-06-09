@@ -8,7 +8,7 @@ struct RootView: View {
     let diContainer: DIContainer
 
     var body: some View {
-        GalleryView(diContainer: diContainer)
+        ItemListView(diContainer: diContainer)
             .task {
                 #if DEBUG
                 printContainerPaths()

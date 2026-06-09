@@ -9,7 +9,7 @@ import GRDB
 @MainActor
 final class DebugViewModel {
     private let itemRepository: ItemRepository
-    private(set) var items: [GalleryItem] = []
+    private(set) var items: [ItemListItem] = []
 
     @ObservationIgnored private var cancellable: AnyDatabaseCancellable?
 
@@ -19,7 +19,7 @@ final class DebugViewModel {
 
     func start() {
         guard cancellable == nil else { return }
-        cancellable = itemRepository.observeGalleryItems(
+        cancellable = itemRepository.observeItemListItems(
             onChange: { [weak self] items in self?.items = items },
             onError: { _ in }
         )

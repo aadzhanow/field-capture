@@ -235,12 +235,12 @@ nonisolated final class ItemRepository: Sendable {
     // MARK: - Observation (read)
 
     @MainActor
-    func observeGalleryItems(
-        onChange: @escaping @MainActor ([GalleryItem]) -> Void,
+    func observeItemListItems(
+        onChange: @escaping @MainActor ([ItemListItem]) -> Void,
         onError: @escaping @MainActor (Error) -> Void
     ) -> AnyDatabaseCancellable {
         let observation = ValueObservation.tracking { db in
-            try ItemRepository.fetchGalleryItems(db)
+            try ItemRepository.fetchItemListItems(db)
         }
         return observation.start(
             in: dbWriter,
@@ -249,8 +249,8 @@ nonisolated final class ItemRepository: Sendable {
         )
     }
 
-    static func fetchGalleryItems(_ db: Database) throws -> [GalleryItem] {
-        let rows = try GalleryItemRow.fetchAll(db, sql: """
+    static func fetchItemListItems(_ db: Database) throws -> [ItemListItem] {
+        let rows = try ItemListItemRow.fetchAll(db, sql: """
             SELECT item.id, item.title, item.createdAt, item.processingStatusRaw,
                    COUNT(photo.id) AS photoCount,
                    (SELECT d.path FROM derivative d
@@ -347,7 +347,7 @@ nonisolated final class ItemRepository: Sendable {
 
 }
 
-private nonisolated struct GalleryItemRow: Decodable, FetchableRecord {
+private nonisolated struct ItemListItemRow: Decodable, FetchableRecord {
     var id: String
     var title: String
     var createdAt: Double
@@ -359,8 +359,8 @@ private nonisolated struct GalleryItemRow: Decodable, FetchableRecord {
     var derivativeReady: Int
     var derivativeFailed: Int
 
-    var galleryItem: GalleryItem {
-        GalleryItem(
+    var galleryItem: ItemListItem {
+        ItemListItem(
             id: id,
             title: title,
             createdAt: Date(timeIntervalSince1970: createdAt),

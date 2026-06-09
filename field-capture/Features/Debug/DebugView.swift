@@ -50,14 +50,14 @@ struct DebugView: View {
 }
 
 private struct DebugItemRow: View {
-    let item: GalleryItem
+    let item: ItemListItem
     let onMakeEligible: () -> Void
 
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.title).font(.subheadline)
-                StatusBadge.forGalleryItem(item)
+                StatusBadge.forItemListItem(item)
             }
             Spacer()
             Button("Make Eligible", action: onMakeEligible)

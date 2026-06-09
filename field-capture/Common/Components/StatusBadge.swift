@@ -24,7 +24,7 @@ struct StatusBadge: View {
 }
 
 extension StatusBadge {
-    static func forGalleryItem(_ item: GalleryItem) -> StatusBadge {
+    static func forItemListItem(_ item: ItemListItem) -> StatusBadge {
         forItem(processingStatus: item.processingStatus, assetStatus: item.assetStatus)
     }
 

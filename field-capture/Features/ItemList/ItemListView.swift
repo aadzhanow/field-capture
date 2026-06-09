@@ -1,12 +1,12 @@
 //
-//  GalleryView.swift
+//  ItemListView.swift
 //
 
 import SwiftUI
 
-struct GalleryView: View {
+struct ItemListView: View {
     private let diContainer: DIContainer
-    @State private var vm: GalleryViewModel
+    @State private var vm: ItemListViewModel
     @State private var showingNewItem = false
     @State private var showingDebug = false
     @Environment(\.scenePhase) private var scenePhase
@@ -21,11 +21,11 @@ struct GalleryView: View {
     var body: some View {
         NavigationStack {
             StateContainer(vm.state) { sections in
-                GalleryList(sections: sections, diContainer: diContainer)
+                ItemListContent(sections: sections, diContainer: diContainer)
             } empty: {
-                EmptyGalleryView()
+                EmptyItemListView()
             }
-            .navigationTitle("Gallery")
+            .navigationTitle("Item List")
             .navigationDestination(for: String.self) { itemID in
                 ItemDetailView(diContainer: diContainer, itemID: itemID)
             }
@@ -70,8 +70,8 @@ struct GalleryView: View {
     }
 }
 
-private struct GalleryList: View {
-    let sections: [GallerySection]
+private struct ItemListContent: View {
+    let sections: [ItemListSection]
     let diContainer: DIContainer
 
     var body: some View {
@@ -80,7 +80,7 @@ private struct GalleryList: View {
                 Section(section.title) {
                     ForEach(section.items) { item in
                         NavigationLink(value: item.id) {
-                            GalleryCard(item: item, fileStorage: diContainer.fileStorage)
+                            ItemCard(item: item, fileStorage: diContainer.fileStorage)
                         }
                     }
                 }
@@ -89,7 +89,7 @@ private struct GalleryList: View {
     }
 }
 
-private struct EmptyGalleryView: View {
+private struct EmptyItemListView: View {
     var body: some View {
         ContentUnavailableView {
             Label("No Items Yet", systemImage: "tray")
