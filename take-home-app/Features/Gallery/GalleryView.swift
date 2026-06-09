@@ -19,7 +19,7 @@ struct GalleryView: View {
     var body: some View {
         NavigationStack {
             StateContainer(vm.state) { sections in
-                GalleryList(sections: sections, fileStorage: diContainer.fileStorage)
+                GalleryList(sections: sections, diContainer: diContainer)
             } empty: {
                 EmptyGalleryView()
             }
@@ -59,14 +59,18 @@ struct GalleryView: View {
 
 private struct GalleryList: View {
     let sections: [GallerySection]
-    let fileStorage: FileStorage
+    let diContainer: DIContainer
 
     var body: some View {
         List {
             ForEach(sections) { section in
                 Section(section.title) {
                     ForEach(section.items) { item in
-                        GalleryCard(item: item, fileStorage: fileStorage)
+                        NavigationLink {
+                            ItemDetailView(diContainer: diContainer, itemID: item.id)
+                        } label: {
+                            GalleryCard(item: item, fileStorage: diContainer.fileStorage)
+                        }
                     }
                 }
             }
