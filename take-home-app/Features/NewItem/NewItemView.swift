@@ -14,7 +14,10 @@ struct NewItemView: View {
     @State private var isImporting = false
 
     init(diContainer: DIContainer) {
-        vm = .init(itemRepository: diContainer.itemRepository)
+        vm = .init(
+            itemRepository: diContainer.itemRepository,
+            processingEngine: diContainer.processingEngine
+        )
     }
 
     var body: some View {

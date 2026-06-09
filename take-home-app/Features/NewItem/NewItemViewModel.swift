@@ -8,6 +8,7 @@ import Foundation
 @MainActor
 final class NewItemViewModel {
     private let itemRepository: ItemRepository
+    private let processingEngine: ProcessingEngine
 
     var title: String = ""
     var notes: String = ""
@@ -17,8 +18,9 @@ final class NewItemViewModel {
     /// Flipped to `true` once the local save commits, so the host view can dismiss.
     private(set) var didSave = false
 
-    init(itemRepository: ItemRepository) {
+    init(itemRepository: ItemRepository, processingEngine: ProcessingEngine) {
         self.itemRepository = itemRepository
+        self.processingEngine = processingEngine
     }
 
     // MARK: - Derived UI
@@ -90,11 +92,14 @@ final class NewItemViewModel {
         }
 
         do {
-            try await itemRepository.createItem(
+            let itemID = try await itemRepository.createItem(
                 title: trimmedTitle,
                 notes: trimmedNotes.isEmpty ? nil : trimmedNotes,
                 photos: drafts
             )
+            // Local save is committed — the card can show now. Derivative
+            // generation continues asynchronously in the engine.
+            await processingEngine.enqueue(itemID: itemID)
             state = .saved
             didSave = true
         } catch {
