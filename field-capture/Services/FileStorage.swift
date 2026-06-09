@@ -4,26 +4,11 @@
 
 import Foundation
 
-// Requirements are `nonisolated`: file work runs off the main actor; under the
-// project's MainActor default an unannotated requirement would be main-actor-bound.
-protocol FileStorage: Sendable {
-    nonisolated func url(for relativePath: String) -> URL
-
-    @discardableResult
-    nonisolated func write(_ data: Data, to relativePath: String) throws -> String
-
-    nonisolated func read(_ relativePath: String) throws -> Data
-    nonisolated func delete(_ relativePath: String) throws
-    nonisolated func exists(_ relativePath: String) -> Bool
-
-    nonisolated func allStoredRelativePaths() throws -> [String]
-
-    nonisolated func originalRelativePath(itemID: String, photoID: String) -> String
-
-    nonisolated func derivativeRelativePath(itemID: String, photoID: String, kind: DerivativeKind) -> String
-}
-
-nonisolated final class DiskFileStorage: FileStorage, @unchecked Sendable {
+// Filesystem boundary for image bytes — files only, never DB blobs. Stores and
+// returns RELATIVE paths (absolute container paths break across reinstall).
+// nonisolated so file work runs off the main actor; no mutable state, so the
+// `@unchecked Sendable` is safe.
+nonisolated final class FileStorage: @unchecked Sendable {
     private let baseURL: URL
     private let fileManager = FileManager.default
 
@@ -66,27 +51,6 @@ nonisolated final class DiskFileStorage: FileStorage, @unchecked Sendable {
 
     func exists(_ relativePath: String) -> Bool {
         fileManager.fileExists(atPath: url(for: relativePath).path)
-    }
-
-    func allStoredRelativePaths() throws -> [String] {
-        guard let enumerator = fileManager.enumerator(
-            at: baseURL,
-            includingPropertiesForKeys: [.isRegularFileKey]
-        ) else {
-            return []
-        }
-        let basePrefix = baseURL.standardizedFileURL.path
-        var paths: [String] = []
-        for case let fileURL as URL in enumerator {
-            let isFile = (try? fileURL.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile ?? false
-            guard isFile else { continue }
-            var path = fileURL.standardizedFileURL.path
-            guard path.hasPrefix(basePrefix) else { continue }
-            path.removeFirst(basePrefix.count)
-            while path.hasPrefix("/") { path.removeFirst() }
-            paths.append(path)
-        }
-        return paths
     }
 
     func originalRelativePath(itemID: String, photoID: String) -> String {

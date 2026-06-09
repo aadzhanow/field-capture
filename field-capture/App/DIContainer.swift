@@ -19,13 +19,13 @@ final class DIContainer {
     init() {
         do {
             let appDatabase = try AppDatabase.makeShared()
-            let fileStorage = try DiskFileStorage()
+            let fileStorage = try FileStorage()
             let itemRepository = ItemRepository(
                 dbWriter: appDatabase.dbWriter,
                 fileStorage: fileStorage
             )
             let processingRepository = ProcessingRepository(dbWriter: appDatabase.dbWriter)
-            let derivativeGenerator = DefaultDerivativeGenerator()
+            let derivativeGenerator = DerivativeGenerator()
             let debugSettings = DebugSettings()
             let processingService = MockProcessingService(debug: debugSettings)
 

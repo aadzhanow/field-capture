@@ -12,14 +12,10 @@ enum DerivativeError: Error, Equatable {
     case cannotMeetByteCap
 }
 
-protocol DerivativeGenerator: Sendable {
-    nonisolated func generate(from sourceData: Data, kind: DerivativeKind) throws -> Data
-}
-
 // Compress-to-fit: pixel-bounding alone doesn't bound encoded bytes, so at each
 // candidate dimension we try JPEG quality high→low; if even the lowest quality
 // exceeds the ≤700KB cap we step the dimension down and retry.
-nonisolated struct DefaultDerivativeGenerator: DerivativeGenerator {
+nonisolated struct DerivativeGenerator: Sendable {
     private let qualitySteps: [CGFloat] = [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3]
     private let dimensionStepFactor: CGFloat = 0.8
     private let minLongEdge: CGFloat = 64

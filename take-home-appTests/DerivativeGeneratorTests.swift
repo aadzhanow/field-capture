@@ -9,7 +9,7 @@ import XCTest
 @testable import field_capture
 
 final class DerivativeGeneratorTests: XCTestCase {
-    private let generator = DefaultDerivativeGenerator()
+    private let generator = DerivativeGenerator()
 
     func testEveryDerivativeKindStaysWithinByteCap() throws {
         let source = try Self.makeNoisyJPEG(width: 4000, height: 3000)
