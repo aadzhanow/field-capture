@@ -15,8 +15,10 @@ import Foundation
 /// will add `submit`/`retry` here.
 actor ProcessingEngine {
     private let itemRepository: ItemRepository
+    private let processingRepository: ProcessingRepository
     private let fileStorage: FileStorage
     private let generator: DerivativeGenerator
+    private let processingService: ProcessingService
 
     /// Bounds parallel image decode/encode so a 25-photo item doesn't spawn 125
     /// concurrent large-image operations and stutter/OOM (§4.3/§11).
@@ -24,11 +26,21 @@ actor ProcessingEngine {
 
     /// Items currently generating, so a duplicate `enqueue` is a no-op.
     private var running: Set<String> = []
+    /// Items with a processing attempt in flight, so a double-tap is a no-op.
+    private var submitting: Set<String> = []
 
-    init(itemRepository: ItemRepository, fileStorage: FileStorage, generator: DerivativeGenerator) {
+    init(
+        itemRepository: ItemRepository,
+        processingRepository: ProcessingRepository,
+        fileStorage: FileStorage,
+        generator: DerivativeGenerator,
+        processingService: ProcessingService
+    ) {
         self.itemRepository = itemRepository
+        self.processingRepository = processingRepository
         self.fileStorage = fileStorage
         self.generator = generator
+        self.processingService = processingService
     }
 
     /// Fire-and-forget: schedules generation for an item and returns immediately,
@@ -106,5 +118,63 @@ actor ProcessingEngine {
             // That surfaces as "Assets Failed" and blocks readiness.
             try? await repository.markDerivativeFailed(id: work.derivativeID)
         }
+    }
+
+    // MARK: - Submit / Retry (manual)
+
+    /// Manual submission from the Process button. Re-checks both readiness gates
+    /// and the `done`/`processing` guard before starting.
+    func submit(itemID: String) async {
+        await runAttempt(itemID: itemID)
+    }
+
+    /// Retry is the same path — the Process button doubles as Retry when failed.
+    func retry(itemID: String) async {
+        await runAttempt(itemID: itemID)
+    }
+
+    private func runAttempt(itemID: String) async {
+        guard submitting.insert(itemID).inserted else { return }
+        defer { submitting.remove(itemID) }
+
+        // Re-check both gates + the done/processing guard against fresh DB state.
+        guard let context = try? await processingRepository.submissionContext(itemID: itemID),
+              Self.canSubmit(context)
+        else {
+            return
+        }
+
+        // Persist the start BEFORE the await, so an attempt interrupted by a
+        // crash is recoverable (reset to `failed` in P6), never lost.
+        do {
+            try await processingRepository.beginAttempt(itemID: itemID)
+        } catch {
+            return
+        }
+
+        let urls = context.processingPaths.map { fileStorage.url(for: $0) }
+        do {
+            let outcome = try await processingService.process(processingFiles: urls)
+            try? await processingRepository.finishAttempt(
+                itemID: itemID,
+                success: outcome == .success,
+                lastError: outcome == .success ? nil : "Processing failed. Please retry."
+            )
+        } catch {
+            try? await processingRepository.finishAttempt(
+                itemID: itemID,
+                success: false,
+                lastError: error.localizedDescription
+            )
+        }
+    }
+
+    /// Both readiness gates plus the single guard that makes `done` terminal and
+    /// blocks a second attempt while one is in progress. All callers route here.
+    private nonisolated static func canSubmit(_ context: SubmissionContext) -> Bool {
+        guard context.processingStatus != .done, context.processingStatus != .processing else {
+            return false
+        }
+        return context.isDerivativeComplete && context.isEligible
     }
 }
