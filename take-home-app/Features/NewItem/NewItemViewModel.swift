@@ -15,15 +15,12 @@ final class NewItemViewModel {
     private(set) var pendingPhotos: [PendingPhoto] = []
     private(set) var state: SaveState = .editing(validation: nil)
 
-    /// Flipped to `true` once the local save commits, so the host view can dismiss.
     private(set) var didSave = false
 
     init(itemRepository: ItemRepository, processingEngine: ProcessingEngine) {
         self.itemRepository = itemRepository
         self.processingEngine = processingEngine
     }
-
-    // MARK: - Derived UI
 
     var canSave: Bool {
         !trimmedTitle.isEmpty && !pendingPhotos.isEmpty
@@ -45,11 +42,6 @@ final class NewItemViewModel {
         title.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    // MARK: - Photo intake
-
-    /// Appends photos from raw image data (library import or camera capture),
-    /// generating a cheap display thumbnail per photo off the main actor so the
-    /// UI stays smooth while importing many photos at once.
     func addPhotos(_ datas: [Data]) async {
         for data in datas {
             let thumbnail = await Task.detached(priority: .userInitiated) {
@@ -58,22 +50,23 @@ final class NewItemViewModel {
             guard let thumbnail else { continue }
             pendingPhotos.append(PendingPhoto(id: UUID().uuidString, data: data, thumbnail: thumbnail))
         }
-        // Adding photos can resolve the "no photos" validation message.
         if case .editing = state { state = .editing(validation: nil) }
     }
 
-    func addPhoto(_ data: Data) async {
-        await addPhotos([data])
+    func addPhoto(id: String, data: Data) async {
+        let thumbnail = await Task.detached(priority: .userInitiated) {
+            ImageDownsampling.thumbnail(from: data, maxPixelSize: 240)
+        }.value
+        guard let thumbnail else { return }
+        pendingPhotos.append(PendingPhoto(id: id, data: data, thumbnail: thumbnail))
+        if case .editing = state { state = .editing(validation: nil) }
     }
 
     func removePhoto(_ id: PendingPhoto.ID) {
         pendingPhotos.removeAll { $0.id == id }
     }
 
-    // MARK: - Save
-
     func save() async {
-        // Validate first; surface validation distinct from a disk/DB save failure.
         if trimmedTitle.isEmpty {
             state = .editing(validation: .titleEmpty)
             return
@@ -85,8 +78,6 @@ final class NewItemViewModel {
 
         state = .saving
         let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Capture order = array order; stamp it as sortOrder so the representative
-        // photo (min sortOrder) is the first captured.
         let drafts = pendingPhotos.enumerated().map { index, photo in
             PhotoDraft(data: photo.data, sortOrder: index)
         }
@@ -97,8 +88,6 @@ final class NewItemViewModel {
                 notes: trimmedNotes.isEmpty ? nil : trimmedNotes,
                 photos: drafts
             )
-            // Local save is committed — the card can show now. Derivative
-            // generation continues asynchronously in the engine.
             await processingEngine.enqueue(itemID: itemID)
             state = .saved
             didSave = true

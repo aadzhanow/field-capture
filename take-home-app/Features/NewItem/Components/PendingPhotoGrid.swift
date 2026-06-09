@@ -4,8 +4,6 @@
 
 import SwiftUI
 
-/// Grid of unsaved photos with per-photo remove. Lazy + pre-downsampled
-/// thumbnails keep it cheap at 25+ photos.
 struct PendingPhotoGrid: View {
     let photos: [PendingPhoto]
     let onRemove: (PendingPhoto.ID) -> Void
@@ -29,6 +27,8 @@ struct PendingPhotoGrid: View {
                                 .symbolRenderingMode(.palette)
                                 .foregroundStyle(.white, .black.opacity(0.55))
                         }
+                        // Isolate the tap target so a row/section tap can't trigger removal.
+                        .buttonStyle(.borderless)
                         .padding(4)
                     }
                     .accessibilityLabel("Photo")

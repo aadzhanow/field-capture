@@ -38,8 +38,10 @@ struct NewItemView: View {
                 }
             }
             .fullScreenCover(isPresented: $showingCamera) {
-                CameraView { data in
-                    Task { await vm.addPhoto(data) }
+                CameraView { id, data in
+                    Task { await vm.addPhoto(id: id, data: data) }
+                } onDelete: { id in
+                    vm.removePhoto(id)
                 }
             }
             .onChange(of: vm.didSave) { _, didSave in
@@ -50,8 +52,6 @@ struct NewItemView: View {
             .overlay { savingOverlay }
         }
     }
-
-    // MARK: - Sections
 
     private var detailsSection: some View {
         Section {
@@ -120,6 +120,7 @@ struct NewItemView: View {
             }
             .foregroundStyle(.red)
         }
+        .listRowSeparator(.hidden)
         .onChange(of: pickerItems) { _, items in
             guard !items.isEmpty else { return }
             Task { await importPicked(items) }
@@ -134,8 +135,6 @@ struct NewItemView: View {
                 .background(.regularMaterial, in: .rect(cornerRadius: 16))
         }
     }
-
-    // MARK: - Library import
 
     private func importPicked(_ items: [PhotosPickerItem]) async {
         isImporting = true
