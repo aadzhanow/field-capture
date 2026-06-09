@@ -4,8 +4,6 @@
 
 import SwiftUI
 
-/// Placeholder list shown while items load. Mirrors `ItemCard`'s layout
-/// (64×64 thumbnail + title / subtitle / status bars) with a soft shimmer.
 struct ItemListSkeleton: View {
     var body: some View {
         List {

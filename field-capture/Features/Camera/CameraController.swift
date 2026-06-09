@@ -5,8 +5,6 @@
 @preconcurrency import AVFoundation
 import SwiftUI
 
-/// Main-actor-isolated, observable status holder for the camera UI. AVFoundation
-/// work is delegated to `CaptureSessionManager` (off the main actor).
 @Observable
 @MainActor
 final class CameraController {

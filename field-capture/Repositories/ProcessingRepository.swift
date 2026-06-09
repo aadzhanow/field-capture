@@ -43,7 +43,6 @@ nonisolated final class ProcessingRepository: Sendable {
         }
     }
 
-    // persist before the network await so a crash mid-attempt leaves a recoverable job
     func beginAttempt(itemID: String) async throws {
         try await dbWriter.write { db in
             let now = Date().timeIntervalSince1970

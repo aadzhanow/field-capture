@@ -14,8 +14,6 @@ nonisolated final class MockProcessingService: ProcessingService {
     }
 
     func process(processingFiles: [URL]) async throws -> ProcessingOutcome {
-        // A real backend would reject an empty or unreadable payload, so the mock
-        // does too — this is what consumes each photo's `processing` derivative.
         guard !processingFiles.isEmpty,
               processingFiles.allSatisfy({ FileManager.default.fileExists(atPath: $0.path) })
         else {

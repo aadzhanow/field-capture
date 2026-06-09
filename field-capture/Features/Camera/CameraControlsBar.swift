@@ -5,7 +5,6 @@
 import SwiftUI
 import UIKit
 
-/// Bottom bar: captured-thumbnail (with count), shutter, and Done.
 struct CameraControlsBar: View {
     let capturedCount: Int
     let lastThumbnail: UIImage?

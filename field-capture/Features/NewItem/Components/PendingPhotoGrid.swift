@@ -27,7 +27,6 @@ struct PendingPhotoGrid: View {
                                 .symbolRenderingMode(.palette)
                                 .foregroundStyle(.white, .black.opacity(0.55))
                         }
-                        // Isolate the tap target so a row/section tap can't trigger removal.
                         .buttonStyle(.borderless)
                         .padding(4)
                     }

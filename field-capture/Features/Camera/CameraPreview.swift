@@ -6,7 +6,6 @@
 import SwiftUI
 import UIKit
 
-/// Hosts an `AVCaptureVideoPreviewLayer` for the live camera feed.
 struct CameraPreview: UIViewRepresentable {
     let session: AVCaptureSession
 

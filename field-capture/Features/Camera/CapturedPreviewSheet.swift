@@ -5,8 +5,6 @@
 import SwiftUI
 import UIKit
 
-/// Review sheet for the session's captures: a large selected image, a selectable
-/// thumbnail strip, and a delete action. Mirrors the item-detail preview.
 struct CapturedPreviewSheet: View {
     let photos: [SessionPhoto]
     let onDelete: (String) -> Void

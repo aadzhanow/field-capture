@@ -4,10 +4,6 @@
 
 import Foundation
 
-// Filesystem boundary for image bytes — files only, never DB blobs. Stores and
-// returns RELATIVE paths (absolute container paths break across reinstall).
-// nonisolated so file work runs off the main actor; no mutable state, so the
-// `@unchecked Sendable` is safe.
 nonisolated final class FileStorage: @unchecked Sendable {
     private let baseURL: URL
     private let fileManager = FileManager.default
@@ -34,7 +30,7 @@ nonisolated final class FileStorage: @unchecked Sendable {
             at: fileURL.deletingLastPathComponent(),
             withIntermediateDirectories: true
         )
-        try data.write(to: fileURL, options: .atomic) // atomic: crash mid-write leaves no partial file
+        try data.write(to: fileURL, options: .atomic)
         return relativePath
     }
 
@@ -61,7 +57,6 @@ nonisolated final class FileStorage: @unchecked Sendable {
         "\(Constants.derivativesDirectoryName)/\(itemID)/\(photoID)/\(kind.rawValue).jpg"
     }
 
-    /// Removes every original and derivative file for an item (whole-subtree delete).
     func deleteItemFiles(itemID: String) {
         try? delete("\(Constants.originalsDirectoryName)/\(itemID)")
         try? delete("\(Constants.derivativesDirectoryName)/\(itemID)")

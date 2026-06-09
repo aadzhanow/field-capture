@@ -5,7 +5,6 @@
 import SwiftUI
 import UIKit
 
-/// Shown when the camera is denied or unavailable (e.g. the simulator).
 struct CameraUnavailableView: View {
     let icon: String
     let title: String

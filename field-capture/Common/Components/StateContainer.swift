@@ -46,7 +46,6 @@ struct StateContainer<Value, Loaded: View, Empty: View, Loading: View>: View {
     }
 }
 
-// Default loading view (a centered spinner) when no custom one is supplied.
 extension StateContainer where Loading == DefaultLoadingView {
     init(
         _ state: ViewState<Value>,

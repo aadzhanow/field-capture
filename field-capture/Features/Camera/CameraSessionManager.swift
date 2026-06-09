@@ -4,9 +4,6 @@
 
 @preconcurrency import AVFoundation
 
-/// Owns the `AVCaptureSession` and runs every session operation on its own serial
-/// queue — deliberately not main-actor isolated, so its queue closures can touch
-/// the session directly. Mutable state is only touched on `queue`.
 nonisolated final class CaptureSessionManager: @unchecked Sendable {
     let session = AVCaptureSession()
     private let photoOutput = AVCapturePhotoOutput()
