@@ -32,14 +32,4 @@ final class GalleryViewModel {
     func refreshEligibility() async {
         try? await itemRepository.promoteEligibleItems()
     }
-
-    #if DEBUG
-    func debugInsertItem() async {
-        do {
-            try await itemRepository.insertDebugItem()
-        } catch {
-            state = .error(error.localizedDescription)
-        }
-    }
-    #endif
 }

@@ -23,17 +23,7 @@ nonisolated final class ProcessingRepository: Sendable {
         try await dbWriter.read { db in
             guard let item = try Item.fetchOne(db, key: itemID) else { return nil }
 
-            let counts = try SubmissionCounts.fetchOne(db, sql: """
-                SELECT
-                  (SELECT COUNT(*) FROM photo WHERE itemId = :id) AS photoCount,
-                  (SELECT COUNT(*) FROM derivative d JOIN photo p ON p.id = d.photoId
-                     WHERE p.itemId = :id) AS total,
-                  (SELECT COUNT(*) FROM derivative d JOIN photo p ON p.id = d.photoId
-                     WHERE p.itemId = :id AND d.statusRaw = 'ready') AS ready
-                """, arguments: ["id": itemID]) ?? SubmissionCounts(photoCount: 0, total: 0, ready: 0)
-
-            let expected = counts.photoCount * DerivativeKind.allCases.count
-            let complete = counts.photoCount > 0 && counts.total == expected && counts.ready == expected
+            let complete = try ItemRepository.isDerivativeComplete(db, itemID: itemID)
 
             let paths = try String.fetchAll(db, sql: """
                 SELECT d.path FROM derivative d
@@ -121,10 +111,4 @@ nonisolated final class ProcessingRepository: Sendable {
                 """, arguments: [ProcessingStatus.failed.rawValue, ProcessingStatus.processing.rawValue])
         }
     }
-}
-
-private nonisolated struct SubmissionCounts: Decodable, FetchableRecord {
-    var photoCount: Int
-    var total: Int
-    var ready: Int
 }

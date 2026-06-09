@@ -57,11 +57,6 @@ struct GalleryView: View {
         }
         .task {
             vm.start()
-            #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("-seedDebugItem") {
-                await vm.debugInsertItem()
-            }
-            #endif
         }
         .task {
             while !Task.isCancelled {

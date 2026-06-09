@@ -154,15 +154,7 @@ nonisolated final class ItemRepository: Sendable {
         let status = ProcessingStatus(rawValue: item.processingStatusRaw) ?? .notReady
         guard status == .notReady || status == .ready else { return }
 
-        let counts = try StatusCounts.fetchOne(db, sql: """
-            SELECT COUNT(*) AS total,
-                   COALESCE(SUM(CASE WHEN d.statusRaw = 'ready' THEN 1 ELSE 0 END), 0) AS ready
-              FROM derivative d
-              JOIN photo p ON p.id = d.photoId
-             WHERE p.itemId = ?
-            """, arguments: [itemID]) ?? StatusCounts(total: 0, ready: 0)
-
-        let complete = counts.total > 0 && counts.ready == counts.total
+        let complete = try isDerivativeComplete(db, itemID: itemID)
         let eligible = Date().timeIntervalSince1970 >= item.createdAt + Constants.eligibilityWindow
         let newStatus: ProcessingStatus = (complete && eligible) ? .ready : .notReady
 
@@ -170,6 +162,22 @@ nonisolated final class ItemRepository: Sendable {
             item.processingStatusRaw = newStatus.rawValue
             try item.update(db)
         }
+    }
+
+    /// Single source of truth for "derivative-complete" (§5/§6): every photo has
+    /// all five derivatives `ready`, each with a stored file ≤ 700KB. A derivative
+    /// only reaches `ready` after an atomic write under the cap, so this also
+    /// rejects any row missing a path or over the limit.
+    static func isDerivativeComplete(_ db: Database, itemID: String) throws -> Bool {
+        let counts = try CompletionCounts.fetchOne(db, sql: """
+            SELECT (SELECT COUNT(*) FROM photo WHERE itemId = :id) AS photoCount,
+                   (SELECT COUNT(*) FROM derivative d JOIN photo p ON p.id = d.photoId
+                      WHERE p.itemId = :id AND d.statusRaw = 'ready'
+                        AND d.path IS NOT NULL AND d.byteCount <= :cap) AS readyValid
+            """, arguments: ["id": itemID, "cap": Constants.maxDerivativeBytes])
+            ?? CompletionCounts(photoCount: 0, readyValid: 0)
+        return counts.photoCount > 0
+            && counts.readyValid == counts.photoCount * DerivativeKind.allCases.count
     }
 
     func makeEligible(itemID: String) async throws {
@@ -185,15 +193,12 @@ nonisolated final class ItemRepository: Sendable {
 
     func promoteEligibleItems() async throws {
         try await dbWriter.write { db in
-            try db.execute(sql: """
-                UPDATE item SET processingStatusRaw = 'ready'
-                 WHERE processingStatusRaw = 'notReady'
-                   AND (createdAt + ?) <= ?
-                   AND EXISTS (SELECT 1 FROM photo WHERE photo.itemId = item.id)
-                   AND NOT EXISTS (
-                       SELECT 1 FROM derivative d JOIN photo p ON p.id = d.photoId
-                        WHERE p.itemId = item.id AND d.statusRaw <> 'ready')
-                """, arguments: [Constants.eligibilityWindow, Date().timeIntervalSince1970])
+            let notReadyIDs = try String.fetchAll(
+                db, sql: "SELECT id FROM item WHERE processingStatusRaw = 'notReady'"
+            )
+            for id in notReadyIDs {
+                try Self.recomputeProcessingStatus(db, itemID: id)
+            }
         }
     }
 
@@ -214,14 +219,6 @@ nonisolated final class ItemRepository: Sendable {
                 UPDATE derivative SET statusRaw = 'pending', path = NULL, byteCount = NULL
                  WHERE id IN (\(databaseQuestionMarks(count: ids.count)))
                 """, arguments: StatementArguments(ids))
-        }
-    }
-
-    func allReferencedFilePaths() async throws -> Set<String> {
-        try await dbWriter.read { db in
-            let originals = try String.fetchAll(db, sql: "SELECT originalPath FROM photo")
-            let derivatives = try String.fetchAll(db, sql: "SELECT path FROM derivative WHERE path IS NOT NULL")
-            return Set(originals).union(derivatives)
         }
     }
 
@@ -348,20 +345,6 @@ nonisolated final class ItemRepository: Sendable {
         )
     }
 
-    #if DEBUG
-    func insertDebugItem() async throws {
-        let item = Item(
-            id: UUID().uuidString,
-            title: "Debug Item \(Int.random(in: 100...999))",
-            notes: nil,
-            createdAt: Date().timeIntervalSince1970,
-            processingStatusRaw: ProcessingStatus.notReady.rawValue
-        )
-        try await dbWriter.write { db in
-            try item.insert(db)
-        }
-    }
-    #endif
 }
 
 private nonisolated struct GalleryItemRow: Decodable, FetchableRecord {
@@ -399,7 +382,7 @@ private nonisolated struct DerivativeWorkRow: Decodable, FetchableRecord {
     var kind: String
 }
 
-private nonisolated struct StatusCounts: Decodable, FetchableRecord {
-    var total: Int
-    var ready: Int
+private nonisolated struct CompletionCounts: Decodable, FetchableRecord {
+    var photoCount: Int
+    var readyValid: Int
 }

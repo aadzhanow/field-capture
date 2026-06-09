@@ -43,12 +43,26 @@ struct ProcessActionBar: View {
                         .foregroundStyle(.red)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Button(action: onProcess) {
-                    Label("Retry", systemImage: "arrow.clockwise")
-                        .frame(maxWidth: .infinity)
+                if canProcess {
+                    Button(action: onProcess) {
+                        Label("Retry", systemImage: "arrow.clockwise")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.red)
+                } else {
+                    // Assets regressed (e.g. a derivative file went missing) — a
+                    // retry would be blocked, so explain why instead of offering it.
+                    Text(blockedReason)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Button(action: {}) {
+                        Text(blockedTitle).frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(true)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.red)
             }
 
         case .notReady:
@@ -64,6 +78,11 @@ struct ProcessActionBar: View {
                 .disabled(true)
             }
         }
+    }
+
+    /// Mirrors the engine's submit guard: complete derivatives + past the 8h window.
+    private var canProcess: Bool {
+        detail.assetStatus == .complete && Date() >= detail.eligibleAt
     }
 
     private var blockedReason: String {
