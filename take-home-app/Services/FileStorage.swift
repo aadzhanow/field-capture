@@ -4,20 +4,11 @@
 
 import Foundation
 
-/// Filesystem boundary for image bytes. Image data lives as **files**, never as
-/// DB blobs (§2). Everything here speaks **relative** paths — absolute container
-/// URLs break across reinstall/restore because the container UUID changes while
-/// the DB persists (a silent data-loss bug). This type owns the base-URL
-/// resolution and is the only place a relative path becomes an absolute `URL`.
-/// Requirements are `nonisolated` because file work runs off the main actor
-/// (the derivative pipeline, image decoding). Under the project's MainActor
-/// default isolation, an unannotated requirement would be main-actor-bound.
+// Requirements are `nonisolated`: file work runs off the main actor; under the
+// project's MainActor default an unannotated requirement would be main-actor-bound.
 protocol FileStorage: Sendable {
-    /// Absolute URL for a stored relative path (resolved against the base dir).
     nonisolated func url(for relativePath: String) -> URL
 
-    /// Writes `data` atomically (temp file + rename) at `relativePath`, creating
-    /// intermediate directories. Returns the same relative path for convenience.
     @discardableResult
     nonisolated func write(_ data: Data, to relativePath: String) throws -> String
 
@@ -25,23 +16,14 @@ protocol FileStorage: Sendable {
     nonisolated func delete(_ relativePath: String) throws
     nonisolated func exists(_ relativePath: String) -> Bool
 
-    /// Relative paths of every file currently under storage, for the launch-time
-    /// orphan sweep (files with no matching DB row).
     nonisolated func allStoredRelativePaths() throws -> [String]
 
-    /// Stable relative path for an original image, grouped by item so an item's
-    /// files can be swept in one shot.
     nonisolated func originalRelativePath(itemID: String, photoID: String) -> String
 
-    /// Stable relative path for a generated derivative file.
     nonisolated func derivativeRelativePath(itemID: String, photoID: String, kind: DerivativeKind) -> String
 }
 
-/// On-disk `FileStorage`. Base dir is `Application Support/Images`. No shared
-/// mutable state, so it is safely `Sendable` and usable from the derivative
-/// pipeline (background) and image loading (main) alike.
 nonisolated final class DiskFileStorage: FileStorage, @unchecked Sendable {
-    /// Absolute base directory. Stored relative paths are resolved against this.
     private let baseURL: URL
     private let fileManager = FileManager.default
 
@@ -67,9 +49,7 @@ nonisolated final class DiskFileStorage: FileStorage, @unchecked Sendable {
             at: fileURL.deletingLastPathComponent(),
             withIntermediateDirectories: true
         )
-        // `.atomic` writes to a temp file and renames into place, so a crash
-        // mid-write can never leave a partially written file readable as valid.
-        try data.write(to: fileURL, options: .atomic)
+        try data.write(to: fileURL, options: .atomic) // atomic: crash mid-write leaves no partial file
         return relativePath
     }
 

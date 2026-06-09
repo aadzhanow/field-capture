@@ -4,9 +4,6 @@
 
 import SwiftUI
 
-/// One photo's per-derivative status (§3 image-level status). Shows the five
-/// derivative kinds as chips that flip pending → ready/failed live, plus the
-/// photo's derived asset status.
 struct DerivativeStatusRow: View {
     let photo: DetailPhoto
     let index: Int
@@ -66,8 +63,6 @@ private struct DerivativeChip: View {
         }
     }
 
-    /// Shows the file size for a ready derivative (a quick visual check of the
-    /// ≤700KB cap), or the status word otherwise.
     private var detailLabel: String {
         switch derivative.status {
         case .ready:

@@ -4,9 +4,6 @@
 
 import SwiftUI
 
-/// Horizontal strip of the item's photos, with a per-photo asset-status dot and
-/// a tinted ring on the selected photo. Thumbnails upgrade live as derivatives
-/// land (precedence `thumbnail → card → preview`).
 struct ThumbnailStrip: View {
     let photos: [DetailPhoto]
     let fileStorage: FileStorage

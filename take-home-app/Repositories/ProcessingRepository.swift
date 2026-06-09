@@ -5,21 +5,13 @@
 import Foundation
 import GRDB
 
-/// Snapshot the engine reads to enforce the two readiness gates + the
-/// `done`/`processing` guard before starting an attempt.
 nonisolated struct SubmissionContext: Sendable {
     let processingStatus: ProcessingStatus
-    /// Every photo has all five derivatives ready (§6 derivative-completeness).
     let isDerivativeComplete: Bool
-    /// `now >= eligibleAt` (createdAt + 8h); reflects debug "make eligible".
     let isEligible: Bool
-    /// Relative paths of the ready `processing`-kind derivatives, one per photo.
     let processingPaths: [String]
 }
 
-/// Owns the `processingJob` table and the item's processing-status transitions.
-/// `nonisolated`/`Sendable` so the engine drives it off the main actor; its
-/// async DB calls hop to GRDB's own queue.
 nonisolated final class ProcessingRepository: Sendable {
     private let dbWriter: any DatabaseWriter
 
@@ -61,10 +53,7 @@ nonisolated final class ProcessingRepository: Sendable {
         }
     }
 
-    /// Persist the **start** of an attempt in one transaction, *before* the
-    /// network await: item + job → `processing`, `submittedAt = now`,
-    /// `attemptCount += 1`. So a crash mid-attempt leaves a recoverable
-    /// `processing` job (reset to `failed` by recovery in P6), never a lost one.
+    // persist before the network await so a crash mid-attempt leaves a recoverable job
     func beginAttempt(itemID: String) async throws {
         try await dbWriter.write { db in
             let now = Date().timeIntervalSince1970
@@ -95,8 +84,6 @@ nonisolated final class ProcessingRepository: Sendable {
         }
     }
 
-    /// Persist the **result** in one transaction, *after* the await: success →
-    /// `done` (terminal), failure → `failed` with `lastError`; `completedAt = now`.
     func finishAttempt(itemID: String, success: Bool, lastError: String?) async throws {
         try await dbWriter.write { db in
             let status: ProcessingStatus = success ? .done : .failed
@@ -116,10 +103,6 @@ nonisolated final class ProcessingRepository: Sendable {
         }
     }
 
-    /// Launch recovery: a kill mid-processing leaves a job persisted as
-    /// `processing` with no live task. Reset those (and their items) to `failed`
-    /// with an "interrupted" error so the card becomes retryable instead of
-    /// "Processing" forever. `done` is terminal and never touched.
     func resetStuckJobs() async throws {
         try await dbWriter.write { db in
             let now = Date().timeIntervalSince1970

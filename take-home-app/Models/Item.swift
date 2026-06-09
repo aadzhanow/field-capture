@@ -9,7 +9,6 @@ nonisolated struct Item: Codable, Identifiable, Equatable, FetchableRecord, Pers
     var id: String
     var title: String
     var notes: String?
-    /// UTC epoch seconds.
     var createdAt: Double
     var processingStatusRaw: String
 

@@ -4,7 +4,6 @@
 
 import SwiftUI
 
-/// What a screen should draw right now. Transient, per-screen, never persisted.
 enum ViewState<Content> {
     case loading
     case loaded(Content)

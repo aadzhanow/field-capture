@@ -5,16 +5,11 @@
 import Foundation
 import GRDB
 
-/// One captured photo's bytes + its capture position, handed to the save path.
-/// Carries compressed JPEG `Data` (not a decoded bitmap), so a 25-photo draft
-/// stays memory-light until it is staged to disk.
 nonisolated struct PhotoDraft: Sendable {
     let data: Data
     let sortOrder: Int
 }
 
-/// One unit of derivative work for the pipeline: which derivative row to fill,
-/// from which original file, at which size.
 nonisolated struct DerivativeWork: Sendable {
     let derivativeID: String
     let photoID: String
@@ -22,16 +17,11 @@ nonisolated struct DerivativeWork: Sendable {
     let kind: DerivativeKind
 }
 
-/// A ready derivative's id + stored path, for the launch file-existence check.
 nonisolated struct DerivativeFileRef: Decodable, FetchableRecord, Sendable {
     var id: String
     var path: String
 }
 
-/// `nonisolated` + `Sendable`: this is a stateless wrapper over a Sendable
-/// `DatabaseWriter` and `FileStorage`, used from the main actor (gallery VM) and
-/// from the `ProcessingEngine` actor alike. Its async DB calls hop to GRDB's
-/// own queue, so heavy save/generation work never runs on the main actor.
 nonisolated final class ItemRepository: Sendable {
     private let dbWriter: any DatabaseWriter
     private let fileStorage: FileStorage
@@ -43,26 +33,11 @@ nonisolated final class ItemRepository: Sendable {
 
     // MARK: - Save (stage-then-commit)
 
-    /// Creates an item with its photos using a **stage-then-commit** order. A
-    /// SQLite transaction cannot enclose filesystem writes, so "one transaction"
-    /// for files + rows is impossible; instead we stage originals first, then
-    /// commit all rows atomically, guaranteeing §8's "no half-created items":
-    ///
-    /// 1. Stage every original to disk (`Data.write(.atomic)`).
-    /// 2. Commit the `item` row + all `photo` rows + the pre-seeded 5×N `pending`
-    ///    derivative matrix in **one** GRDB transaction.
-    /// 3. On commit failure, delete the staged files and rethrow — nothing is
-    ///    shown in the gallery.
-    ///
-    /// A crash between steps can only leave orphan files (rows committed = real
-    /// item; no rows = junk files), which `RecoveryService` sweeps on launch.
-    /// Returns the new item id so the caller can enqueue derivative generation.
     @discardableResult
     func createItem(title: String, notes: String?, photos: [PhotoDraft]) async throws -> String {
         let itemID = UUID().uuidString
         let now = Date().timeIntervalSince1970
 
-        // 1. Stage originals to disk first, building the photo rows as we go.
         var stagedPaths: [String] = []
         var photoRows: [Photo] = []
         do {
@@ -94,16 +69,12 @@ nonisolated final class ItemRepository: Sendable {
             processingStatusRaw: ProcessingStatus.notReady.rawValue
         )
 
-        // 2. Commit item + photos + pre-seeded derivative matrix in one transaction.
+        // stage-then-commit: files first, then one atomic DB transaction
         do {
             try await dbWriter.write { db in
                 try item.insert(db)
                 for photo in photoRows {
                     try photo.insert(db)
-                    // Pre-seed all five derivative rows per photo as `pending`.
-                    // The matrix of expected work lives in the DB from the start,
-                    // so generation and recovery are "find pending rows", not
-                    // guesswork.
                     for kind in DerivativeKind.allCases {
                         try Derivative(
                             id: UUID().uuidString,
@@ -117,7 +88,6 @@ nonisolated final class ItemRepository: Sendable {
                 }
             }
         } catch {
-            // 3. DB commit failed → sweep staged files, surface as save failure.
             stagedPaths.forEach { try? fileStorage.delete($0) }
             throw error
         }
@@ -127,9 +97,6 @@ nonisolated final class ItemRepository: Sendable {
 
     // MARK: - Derivative pipeline support
 
-    /// All not-yet-ready derivative rows for an item (status `pending` or
-    /// `failed`), ordered so the representative photo and its smaller derivatives
-    /// generate first — the gallery thumbnail then upgrades fastest.
     func pendingDerivativeWork(itemID: String) async throws -> [DerivativeWork] {
         try await dbWriter.read { db in
             let rows = try DerivativeWorkRow.fetchAll(db, sql: """
@@ -175,19 +142,12 @@ nonisolated final class ItemRepository: Sendable {
         }
     }
 
-    /// After generation, move a pre-submission item to `ready` when every photo is
-    /// derivative-complete and the 8h window has passed, else keep it `notReady`.
-    /// Never touches `processing`/`failed`/`done` — those are owned by the
-    /// processing flow (P5) and `done` is terminal.
     func recomputeProcessingStatus(itemID: String) async throws {
         try await dbWriter.write { db in
             try Self.recomputeProcessingStatus(db, itemID: itemID)
         }
     }
 
-    /// Pre-submission status recompute, runnable inside a transaction. Moves a
-    /// `notReady`/`ready` item to `ready` when derivative-complete **and** past
-    /// `eligibleAt`, else `notReady`. Never touches `processing`/`failed`/`done`.
     static func recomputeProcessingStatus(_ db: Database, itemID: String) throws {
         guard var item = try Item.fetchOne(db, key: itemID) else { return }
         let status = ProcessingStatus(rawValue: item.processingStatusRaw) ?? .notReady
@@ -211,9 +171,6 @@ nonisolated final class ItemRepository: Sendable {
         }
     }
 
-    /// Debug "make eligible": back-date `createdAt` just past the 8h window and
-    /// recompute, so a complete item flips to `Ready to Process` immediately —
-    /// no real wait. A DB write, so it flows through `ValueObservation`.
     func makeEligible(itemID: String) async throws {
         try await dbWriter.write { db in
             let backDated = Date().timeIntervalSince1970 - Constants.eligibilityWindow - 60
@@ -225,9 +182,6 @@ nonisolated final class ItemRepository: Sendable {
         }
     }
 
-    /// Promote every complete, now-eligible `notReady` item to `ready` in one
-    /// statement. `ValueObservation` fires on DB writes (not the wall clock), so
-    /// the gallery/detail timers call this to flip badges when the window passes.
     func promoteEligibleItems() async throws {
         try await dbWriter.write { db in
             try db.execute(sql: """
@@ -244,8 +198,6 @@ nonisolated final class ItemRepository: Sendable {
 
     // MARK: - Recovery support
 
-    /// Every `ready` derivative that has a stored path, so launch recovery can
-    /// check the file still exists.
     func readyDerivativeFileRefs() async throws -> [DerivativeFileRef] {
         try await dbWriter.read { db in
             try DerivativeFileRef.fetchAll(db, sql: """
@@ -254,8 +206,6 @@ nonisolated final class ItemRepository: Sendable {
         }
     }
 
-    /// Reset derivatives back to `pending` (clearing path/byteCount) so the engine
-    /// regenerates them — used when a `ready` derivative's file has gone missing.
     func markDerivativesPending(ids: [String]) async throws {
         guard !ids.isEmpty else { return }
         try await dbWriter.write { db in
@@ -266,8 +216,6 @@ nonisolated final class ItemRepository: Sendable {
         }
     }
 
-    /// Every file path the DB references (originals + ready derivatives). The
-    /// orphan sweep deletes on-disk files absent from this set.
     func allReferencedFilePaths() async throws -> Set<String> {
         try await dbWriter.read { db in
             let originals = try String.fetchAll(db, sql: "SELECT originalPath FROM photo")
@@ -276,8 +224,6 @@ nonisolated final class ItemRepository: Sendable {
         }
     }
 
-    /// Item ids that still have `pending`/`failed` derivatives, to re-drive
-    /// generation on launch via the same `enqueue` entry point as save.
     func itemIDsWithUnfinishedDerivatives() async throws -> [String] {
         try await dbWriter.read { db in
             try String.fetchAll(db, sql: """
@@ -305,10 +251,6 @@ nonisolated final class ItemRepository: Sendable {
     }
 
     static func fetchGalleryItems(_ db: Database) throws -> [GalleryItem] {
-        // The card's representative image is the first photo by capture order
-        // (`min(sortOrder)`). We surface its `card` and `thumbnail` derivative
-        // paths (only when `ready`) so the card upgrades live as derivatives land
-        // (precedence: card → thumbnail → placeholder).
         let rows = try GalleryItemRow.fetchAll(db, sql: """
             SELECT item.id, item.title, item.createdAt, item.processingStatusRaw,
                    COUNT(photo.id) AS photoCount,
@@ -367,8 +309,6 @@ nonisolated final class ItemRepository: Sendable {
             .filter(photos.map(\.id).contains(Derivative.Columns.photoId))
             .fetchAll(db)
         let byPhoto = Dictionary(grouping: derivatives, by: \.photoId)
-
-        // Stable ordering by DerivativeKind declaration order.
         let order = Dictionary(
             uniqueKeysWithValues: DerivativeKind.allCases.enumerated().map { ($1.rawValue, $0) }
         )

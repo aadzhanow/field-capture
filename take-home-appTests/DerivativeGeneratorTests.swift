@@ -8,11 +8,6 @@ import UniformTypeIdentifiers
 import XCTest
 @testable import take_home_app
 
-/// The ≤700,000-byte cap is the single most failure-prone requirement (§5/§11),
-/// so it gets a dedicated test rather than relying on manual inspection. The hard
-/// case is a large, **noisy** source: random pixels barely compress, so a 1920px
-/// JPEG routinely exceeds the cap at high quality and forces the compress-to-fit
-/// loop (and, if needed, the dimension step-down) to do real work.
 final class DerivativeGeneratorTests: XCTestCase {
     private let generator = DefaultDerivativeGenerator()
 
@@ -30,7 +25,6 @@ final class DerivativeGeneratorTests: XCTestCase {
     }
 
     func testDoesNotUpscaleSmallSource() throws {
-        // A source smaller than a kind's max long edge must not be upscaled.
         let source = try Self.makeNoisyJPEG(width: 100, height: 80)
         let data = try generator.generate(from: source, kind: .processing) // 1920px max
         let longEdge = try Self.longEdge(of: data)
@@ -42,10 +36,6 @@ final class DerivativeGeneratorTests: XCTestCase {
         XCTAssertThrowsError(try generator.generate(from: notAnImage, kind: .thumbnail))
     }
 
-    // MARK: - Helpers
-
-    /// A JPEG of random-noise pixels at maximum quality — a deliberately
-    /// incompressible, large source.
     private static func makeNoisyJPEG(width: Int, height: Int) throws -> Data {
         let bytesPerPixel = 4
         var pixels = [UInt8](repeating: 0, count: width * height * bytesPerPixel)

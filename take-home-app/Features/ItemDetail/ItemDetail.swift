@@ -4,8 +4,6 @@
 
 import Foundation
 
-/// Read model for the item detail screen, rebuilt by `ItemRepository` on every
-/// relevant DB change so the screen updates live as derivatives land.
 nonisolated struct ItemDetail: Identifiable, Equatable, Sendable {
     let id: String
     let title: String
@@ -14,7 +12,6 @@ nonisolated struct ItemDetail: Identifiable, Equatable, Sendable {
     let eligibleAt: Date
     let processingStatusRaw: String
     let photos: [DetailPhoto]
-    /// From the processing job (nil/0 before the first attempt).
     let lastError: String?
     let attemptCount: Int
 
@@ -22,8 +19,6 @@ nonisolated struct ItemDetail: Identifiable, Equatable, Sendable {
         ProcessingStatus(rawValue: processingStatusRaw) ?? .notReady
     }
 
-    /// Item-level asset status: the aggregate of the per-photo statuses.
-    /// Precedence mirrors §6: failed > incomplete > processing > complete.
     var assetStatus: AssetStatus {
         let perPhoto = photos.map(\.assetStatus)
         if perPhoto.contains(.failed) { return .failed }
@@ -36,19 +31,16 @@ nonisolated struct ItemDetail: Identifiable, Equatable, Sendable {
 nonisolated struct DetailPhoto: Identifiable, Equatable, Sendable {
     let id: String
     let sortOrder: Int
-    /// The photo's derivative rows, ordered by `DerivativeKind` declaration order.
     let derivatives: [DetailDerivative]
 
     var assetStatus: AssetStatus {
         AssetStatus.forPhoto(statuses: derivatives.map(\.status))
     }
 
-    /// Large display image — prefers larger derivatives, **never the original**.
     var displayImagePaths: [String] {
         readyPaths(for: [.detail, .preview, .card, .thumbnail])
     }
 
-    /// Thumbnail-strip image.
     var thumbnailImagePaths: [String] {
         readyPaths(for: [.thumbnail, .card, .preview])
     }

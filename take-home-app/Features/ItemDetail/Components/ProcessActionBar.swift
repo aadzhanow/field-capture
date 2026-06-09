@@ -4,9 +4,6 @@
 
 import SwiftUI
 
-/// Drives the manual Process / Retry action from the item's processing status.
-/// A `done` item shows "Processed" with no action (terminal, never re-submits);
-/// a blocked item shows why it can't process yet.
 struct ProcessActionBar: View {
     let detail: ItemDetail
     let onProcess: () -> Void

@@ -32,7 +32,6 @@ struct ItemDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { vm.start() }
         .task {
-            // Re-evaluate the eligibility window while the screen is open.
             while !Task.isCancelled {
                 await vm.refreshEligibility()
                 try? await Task.sleep(for: .seconds(30))

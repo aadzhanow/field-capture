@@ -29,9 +29,6 @@ final class GalleryViewModel {
         state = items.isEmpty ? .empty : .loaded(GallerySection.group(items))
     }
 
-    /// Promote complete, now-eligible items to Ready. ValueObservation fires on
-    /// DB writes, not the wall clock, so the view drives this on a timer / when
-    /// the app becomes active, and the badges flip on their own.
     func refreshEligibility() async {
         try? await itemRepository.promoteEligibleItems()
     }

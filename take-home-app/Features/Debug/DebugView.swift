@@ -4,9 +4,6 @@
 
 import SwiftUI
 
-/// Test controls (§3): exercise failure, retry, and the 8-hour eligibility rule
-/// without waiting. Simulate-offline and force-fail drive the mock processing
-/// service; "Make Eligible" back-dates an item past the 8h window.
 struct DebugView: View {
     @State private var vm: DebugViewModel
     private let debugSettings: DebugSettings

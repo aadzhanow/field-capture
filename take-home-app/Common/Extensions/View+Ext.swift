@@ -4,8 +4,6 @@
 
 import SwiftUI
 
-// MARK: - Glass Effect
-
 extension View {
     @ViewBuilder
     func glassEffectIfAvailable() -> some View {

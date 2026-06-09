@@ -9,7 +9,6 @@ nonisolated struct Derivative: Codable, Identifiable, Equatable, FetchableRecord
     var id: String
     var photoId: String
     var kind: String
-    /// Relative path; nil until the derivative is ready.
     var path: String?
     var byteCount: Int?
     var statusRaw: String
