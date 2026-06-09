@@ -14,6 +14,7 @@ final class DIContainer {
     let debugSettings: DebugSettings
     let processingService: ProcessingService
     let processingEngine: ProcessingEngine
+    let recoveryService: RecoveryService
 
     init() {
         do {
@@ -35,12 +36,19 @@ final class DIContainer {
             self.derivativeGenerator = derivativeGenerator
             self.debugSettings = debugSettings
             self.processingService = processingService
-            self.processingEngine = ProcessingEngine(
+            let processingEngine = ProcessingEngine(
                 itemRepository: itemRepository,
                 processingRepository: processingRepository,
                 fileStorage: fileStorage,
                 generator: derivativeGenerator,
                 processingService: processingService
+            )
+            self.processingEngine = processingEngine
+            self.recoveryService = RecoveryService(
+                itemRepository: itemRepository,
+                processingRepository: processingRepository,
+                fileStorage: fileStorage,
+                processingEngine: processingEngine
             )
         } catch {
             fatalError("Failed to open database: \(error)")

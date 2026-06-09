@@ -115,6 +115,29 @@ nonisolated final class ProcessingRepository: Sendable {
             )
         }
     }
+
+    /// Launch recovery: a kill mid-processing leaves a job persisted as
+    /// `processing` with no live task. Reset those (and their items) to `failed`
+    /// with an "interrupted" error so the card becomes retryable instead of
+    /// "Processing" forever. `done` is terminal and never touched.
+    func resetStuckJobs() async throws {
+        try await dbWriter.write { db in
+            let now = Date().timeIntervalSince1970
+            try db.execute(sql: """
+                UPDATE processingJob
+                   SET statusRaw = ?, lastError = ?, completedAt = ?
+                 WHERE statusRaw = ?
+                """, arguments: [
+                    ProcessingStatus.failed.rawValue,
+                    "Interrupted — please retry.",
+                    now,
+                    ProcessingStatus.processing.rawValue,
+                ])
+            try db.execute(sql: """
+                UPDATE item SET processingStatusRaw = ? WHERE processingStatusRaw = ?
+                """, arguments: [ProcessingStatus.failed.rawValue, ProcessingStatus.processing.rawValue])
+        }
+    }
 }
 
 private nonisolated struct SubmissionCounts: Decodable, FetchableRecord {
