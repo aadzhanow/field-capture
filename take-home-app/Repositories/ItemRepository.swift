@@ -175,26 +175,64 @@ nonisolated final class ItemRepository: Sendable {
     /// processing flow (P5) and `done` is terminal.
     func recomputeProcessingStatus(itemID: String) async throws {
         try await dbWriter.write { db in
-            guard var item = try Item.fetchOne(db, key: itemID) else { return }
-            let status = ProcessingStatus(rawValue: item.processingStatusRaw) ?? .notReady
-            guard status == .notReady || status == .ready else { return }
+            try Self.recomputeProcessingStatus(db, itemID: itemID)
+        }
+    }
 
-            let counts = try StatusCounts.fetchOne(db, sql: """
-                SELECT COUNT(*) AS total,
-                       COALESCE(SUM(CASE WHEN d.statusRaw = 'ready' THEN 1 ELSE 0 END), 0) AS ready
-                  FROM derivative d
-                  JOIN photo p ON p.id = d.photoId
-                 WHERE p.itemId = ?
-                """, arguments: [itemID]) ?? StatusCounts(total: 0, ready: 0)
+    /// Pre-submission status recompute, runnable inside a transaction. Moves a
+    /// `notReady`/`ready` item to `ready` when derivative-complete **and** past
+    /// `eligibleAt`, else `notReady`. Never touches `processing`/`failed`/`done`.
+    static func recomputeProcessingStatus(_ db: Database, itemID: String) throws {
+        guard var item = try Item.fetchOne(db, key: itemID) else { return }
+        let status = ProcessingStatus(rawValue: item.processingStatusRaw) ?? .notReady
+        guard status == .notReady || status == .ready else { return }
 
-            let complete = counts.total > 0 && counts.ready == counts.total
-            let eligible = Date().timeIntervalSince1970 >= item.createdAt + Constants.eligibilityWindow
-            let newStatus: ProcessingStatus = (complete && eligible) ? .ready : .notReady
+        let counts = try StatusCounts.fetchOne(db, sql: """
+            SELECT COUNT(*) AS total,
+                   COALESCE(SUM(CASE WHEN d.statusRaw = 'ready' THEN 1 ELSE 0 END), 0) AS ready
+              FROM derivative d
+              JOIN photo p ON p.id = d.photoId
+             WHERE p.itemId = ?
+            """, arguments: [itemID]) ?? StatusCounts(total: 0, ready: 0)
 
-            if newStatus.rawValue != item.processingStatusRaw {
-                item.processingStatusRaw = newStatus.rawValue
-                try item.update(db)
-            }
+        let complete = counts.total > 0 && counts.ready == counts.total
+        let eligible = Date().timeIntervalSince1970 >= item.createdAt + Constants.eligibilityWindow
+        let newStatus: ProcessingStatus = (complete && eligible) ? .ready : .notReady
+
+        if newStatus.rawValue != item.processingStatusRaw {
+            item.processingStatusRaw = newStatus.rawValue
+            try item.update(db)
+        }
+    }
+
+    /// Debug "make eligible": back-date `createdAt` just past the 8h window and
+    /// recompute, so a complete item flips to `Ready to Process` immediately —
+    /// no real wait. A DB write, so it flows through `ValueObservation`.
+    func makeEligible(itemID: String) async throws {
+        try await dbWriter.write { db in
+            let backDated = Date().timeIntervalSince1970 - Constants.eligibilityWindow - 60
+            try db.execute(
+                sql: "UPDATE item SET createdAt = ? WHERE id = ?",
+                arguments: [backDated, itemID]
+            )
+            try Self.recomputeProcessingStatus(db, itemID: itemID)
+        }
+    }
+
+    /// Promote every complete, now-eligible `notReady` item to `ready` in one
+    /// statement. `ValueObservation` fires on DB writes (not the wall clock), so
+    /// the gallery/detail timers call this to flip badges when the window passes.
+    func promoteEligibleItems() async throws {
+        try await dbWriter.write { db in
+            try db.execute(sql: """
+                UPDATE item SET processingStatusRaw = 'ready'
+                 WHERE processingStatusRaw = 'notReady'
+                   AND (createdAt + ?) <= ?
+                   AND EXISTS (SELECT 1 FROM photo WHERE photo.itemId = item.id)
+                   AND NOT EXISTS (
+                       SELECT 1 FROM derivative d JOIN photo p ON p.id = d.photoId
+                        WHERE p.itemId = item.id AND d.statusRaw <> 'ready')
+                """, arguments: [Constants.eligibilityWindow, Date().timeIntervalSince1970])
         }
     }
 
@@ -298,6 +336,10 @@ nonisolated final class ItemRepository: Sendable {
             return DetailPhoto(id: photo.id, sortOrder: photo.sortOrder, derivatives: rows)
         }
 
+        let job = try ProcessingJob
+            .filter(ProcessingJob.Columns.itemId == itemID)
+            .fetchOne(db)
+
         return ItemDetail(
             id: item.id,
             title: item.title,
@@ -305,7 +347,9 @@ nonisolated final class ItemRepository: Sendable {
             createdAt: item.createdDate,
             eligibleAt: item.eligibleAt,
             processingStatusRaw: item.processingStatusRaw,
-            photos: detailPhotos
+            photos: detailPhotos,
+            lastError: job?.lastError,
+            attemptCount: job?.attemptCount ?? 0
         )
     }
 

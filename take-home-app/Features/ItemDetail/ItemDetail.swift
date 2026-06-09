@@ -14,6 +14,9 @@ nonisolated struct ItemDetail: Identifiable, Equatable, Sendable {
     let eligibleAt: Date
     let processingStatusRaw: String
     let photos: [DetailPhoto]
+    /// From the processing job (nil/0 before the first attempt).
+    let lastError: String?
+    let attemptCount: Int
 
     var processingStatus: ProcessingStatus {
         ProcessingStatus(rawValue: processingStatusRaw) ?? .notReady

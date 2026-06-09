@@ -7,15 +7,20 @@ import SwiftUI
 struct ItemDetailView: View {
     @State private var vm: ItemDetailViewModel
     private let fileStorage: FileStorage
+    @Environment(\.scenePhase) private var scenePhase
 
     init(diContainer: DIContainer, itemID: String) {
         fileStorage = diContainer.fileStorage
-        vm = .init(itemRepository: diContainer.itemRepository, itemID: itemID)
+        vm = .init(
+            itemRepository: diContainer.itemRepository,
+            processingEngine: diContainer.processingEngine,
+            itemID: itemID
+        )
     }
 
     var body: some View {
         StateContainer(vm.state) { detail in
-            ItemDetailContent(detail: detail, fileStorage: fileStorage)
+            ItemDetailContent(detail: detail, fileStorage: fileStorage) { vm.process() }
         } empty: {
             ContentUnavailableView(
                 "Item Unavailable",
@@ -26,12 +31,23 @@ struct ItemDetailView: View {
         .navigationTitle("Details")
         .navigationBarTitleDisplayMode(.inline)
         .task { vm.start() }
+        .task {
+            // Re-evaluate the eligibility window while the screen is open.
+            while !Task.isCancelled {
+                await vm.refreshEligibility()
+                try? await Task.sleep(for: .seconds(30))
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await vm.refreshEligibility() } }
+        }
     }
 }
 
 private struct ItemDetailContent: View {
     let detail: ItemDetail
     let fileStorage: FileStorage
+    let onProcess: () -> Void
 
     @State private var selectedPhotoID: DetailPhoto.ID?
 
@@ -51,6 +67,7 @@ private struct ItemDetailContent: View {
                     )
                 }
                 metadata
+                ProcessActionBar(detail: detail, onProcess: onProcess)
                 Divider()
                 perPhotoSection
             }
@@ -76,12 +93,18 @@ private struct ItemDetailContent: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(detail.title)
                 .font(.title2.bold())
+            
             if let notes = detail.notes, !notes.isEmpty {
                 Text(notes)
                     .font(.body)
                     .foregroundStyle(.secondary)
             }
-            StatusBadge.forItem(processingStatus: detail.processingStatus, assetStatus: detail.assetStatus)
+            
+            StatusBadge.forItem(
+                processingStatus: detail.processingStatus,
+                assetStatus: detail.assetStatus
+            )
+            
             VStack(alignment: .leading, spacing: 2) {
                 Label("Captured \(detail.createdAt.formatted(date: .abbreviated, time: .shortened))", systemImage: "calendar")
                 Label("Eligible \(detail.eligibleAt.formatted(date: .abbreviated, time: .shortened))", systemImage: "hourglass")
