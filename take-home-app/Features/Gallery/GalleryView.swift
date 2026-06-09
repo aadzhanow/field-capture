@@ -8,6 +8,8 @@ struct GalleryView: View {
     private let diContainer: DIContainer
     @State private var vm: GalleryViewModel
     @State private var showingNewItem = false
+    @State private var showingDebug = false
+    @Environment(\.scenePhase) private var scenePhase
 
     init(
         diContainer: DIContainer
@@ -27,14 +29,9 @@ struct GalleryView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
-                        // P5: profile.
+                        showingDebug = true
                     } label: {
-                        Image(systemName: "person.crop.circle")
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Select") {
-                        // Later: multi-select.
+                        Label("Debug", systemImage: "hammer")
                     }
                 }
             }
@@ -46,6 +43,9 @@ struct GalleryView: View {
         .sheet(isPresented: $showingNewItem) {
             NewItemView(diContainer: diContainer)
         }
+        .sheet(isPresented: $showingDebug) {
+            DebugView(diContainer: diContainer)
+        }
         .task {
             vm.start()
             #if DEBUG
@@ -53,6 +53,16 @@ struct GalleryView: View {
                 await vm.debugInsertItem()
             }
             #endif
+        }
+        .task {
+            // Re-evaluate the eligibility window while the gallery is open.
+            while !Task.isCancelled {
+                await vm.refreshEligibility()
+                try? await Task.sleep(for: .seconds(30))
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await vm.refreshEligibility() } }
         }
     }
 }
