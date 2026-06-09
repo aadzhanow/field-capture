@@ -25,6 +25,10 @@ protocol FileStorage: Sendable {
     nonisolated func delete(_ relativePath: String) throws
     nonisolated func exists(_ relativePath: String) -> Bool
 
+    /// Relative paths of every file currently under storage, for the launch-time
+    /// orphan sweep (files with no matching DB row).
+    nonisolated func allStoredRelativePaths() throws -> [String]
+
     /// Stable relative path for an original image, grouped by item so an item's
     /// files can be swept in one shot.
     nonisolated func originalRelativePath(itemID: String, photoID: String) -> String
@@ -82,6 +86,27 @@ nonisolated final class DiskFileStorage: FileStorage, @unchecked Sendable {
 
     func exists(_ relativePath: String) -> Bool {
         fileManager.fileExists(atPath: url(for: relativePath).path)
+    }
+
+    func allStoredRelativePaths() throws -> [String] {
+        guard let enumerator = fileManager.enumerator(
+            at: baseURL,
+            includingPropertiesForKeys: [.isRegularFileKey]
+        ) else {
+            return []
+        }
+        let basePrefix = baseURL.standardizedFileURL.path
+        var paths: [String] = []
+        for case let fileURL as URL in enumerator {
+            let isFile = (try? fileURL.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile ?? false
+            guard isFile else { continue }
+            var path = fileURL.standardizedFileURL.path
+            guard path.hasPrefix(basePrefix) else { continue }
+            path.removeFirst(basePrefix.count)
+            while path.hasPrefix("/") { path.removeFirst() }
+            paths.append(path)
+        }
+        return paths
     }
 
     func originalRelativePath(itemID: String, photoID: String) -> String {

@@ -22,6 +22,12 @@ nonisolated struct DerivativeWork: Sendable {
     let kind: DerivativeKind
 }
 
+/// A ready derivative's id + stored path, for the launch file-existence check.
+nonisolated struct DerivativeFileRef: Decodable, FetchableRecord, Sendable {
+    var id: String
+    var path: String
+}
+
 /// `nonisolated` + `Sendable`: this is a stateless wrapper over a Sendable
 /// `DatabaseWriter` and `FileStorage`, used from the main actor (gallery VM) and
 /// from the `ProcessingEngine` actor alike. Its async DB calls hop to GRDB's
@@ -233,6 +239,52 @@ nonisolated final class ItemRepository: Sendable {
                        SELECT 1 FROM derivative d JOIN photo p ON p.id = d.photoId
                         WHERE p.itemId = item.id AND d.statusRaw <> 'ready')
                 """, arguments: [Constants.eligibilityWindow, Date().timeIntervalSince1970])
+        }
+    }
+
+    // MARK: - Recovery support
+
+    /// Every `ready` derivative that has a stored path, so launch recovery can
+    /// check the file still exists.
+    func readyDerivativeFileRefs() async throws -> [DerivativeFileRef] {
+        try await dbWriter.read { db in
+            try DerivativeFileRef.fetchAll(db, sql: """
+                SELECT id, path FROM derivative WHERE statusRaw = 'ready' AND path IS NOT NULL
+                """)
+        }
+    }
+
+    /// Reset derivatives back to `pending` (clearing path/byteCount) so the engine
+    /// regenerates them — used when a `ready` derivative's file has gone missing.
+    func markDerivativesPending(ids: [String]) async throws {
+        guard !ids.isEmpty else { return }
+        try await dbWriter.write { db in
+            try db.execute(sql: """
+                UPDATE derivative SET statusRaw = 'pending', path = NULL, byteCount = NULL
+                 WHERE id IN (\(databaseQuestionMarks(count: ids.count)))
+                """, arguments: StatementArguments(ids))
+        }
+    }
+
+    /// Every file path the DB references (originals + ready derivatives). The
+    /// orphan sweep deletes on-disk files absent from this set.
+    func allReferencedFilePaths() async throws -> Set<String> {
+        try await dbWriter.read { db in
+            let originals = try String.fetchAll(db, sql: "SELECT originalPath FROM photo")
+            let derivatives = try String.fetchAll(db, sql: "SELECT path FROM derivative WHERE path IS NOT NULL")
+            return Set(originals).union(derivatives)
+        }
+    }
+
+    /// Item ids that still have `pending`/`failed` derivatives, to re-drive
+    /// generation on launch via the same `enqueue` entry point as save.
+    func itemIDsWithUnfinishedDerivatives() async throws -> [String] {
+        try await dbWriter.read { db in
+            try String.fetchAll(db, sql: """
+                SELECT DISTINCT p.itemId FROM derivative d
+                  JOIN photo p ON p.id = d.photoId
+                 WHERE d.statusRaw IN ('pending', 'failed')
+                """)
         }
     }
 
