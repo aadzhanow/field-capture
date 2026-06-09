@@ -33,15 +33,16 @@ private struct DerivativeChip: View {
         VStack(spacing: 3) {
             Text(kindLabel)
                 .font(.caption2.weight(.semibold))
+                .foregroundStyle(.primary)
             Image(systemName: statusIcon)
-                .font(.caption2)
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(tint)
             Text(detailLabel)
                 .font(.system(size: 9))
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 6)
-        .foregroundStyle(tint)
         .background(tint.opacity(0.12), in: .rect(cornerRadius: 8))
     }
 
