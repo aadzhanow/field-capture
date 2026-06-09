@@ -28,13 +28,13 @@ nonisolated final class DiskFileStorage: FileStorage, @unchecked Sendable {
     private let fileManager = FileManager.default
 
     init() throws {
-        let appSupport = try FileManager.default.url(
-            for: .applicationSupportDirectory,
+        let documents = try FileManager.default.url(
+            for: .documentDirectory,
             in: .userDomainMask,
             appropriateFor: nil,
             create: true
         )
-        self.baseURL = appSupport.appendingPathComponent(Constants.imagesDirectoryName, isDirectory: true)
+        self.baseURL = documents.appendingPathComponent(Constants.imagesDirectoryName, isDirectory: true)
         try fileManager.createDirectory(at: baseURL, withIntermediateDirectories: true)
     }
 

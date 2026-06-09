@@ -19,18 +19,18 @@ struct RootView: View {
 
     #if DEBUG
     private func printContainerPaths() {
-        let appSupport = try? FileManager.default.url(
-            for: .applicationSupportDirectory,
+        let documents = try? FileManager.default.url(
+            for: .documentDirectory,
             in: .userDomainMask,
             appropriateFor: nil,
             create: false
         )
         print("📦 App container")
-        print("   Home:        \(NSHomeDirectory())")
-        if let appSupport {
-            print("   App Support: \(appSupport.path)")
-            print("   Database:    \(appSupport.appendingPathComponent(Constants.databaseFileName).path)")
-            print("   Images:      \(appSupport.appendingPathComponent(Constants.imagesDirectoryName).path)")
+        print("Home: \(NSHomeDirectory())")
+        if let documents {
+            print("Documents: \(documents.path)")
+            print("Database: \(documents.appendingPathComponent(Constants.databaseFileName).path)")
+            print("Images: \(documents.appendingPathComponent(Constants.imagesDirectoryName).path)")
         }
     }
     #endif

@@ -70,13 +70,13 @@ final class AppDatabase {
 extension AppDatabase {
     static func makeShared() throws -> AppDatabase {
         let fileManager = FileManager.default
-        let appSupport = try fileManager.url(
-            for: .applicationSupportDirectory,
+        let documents = try fileManager.url(
+            for: .documentDirectory,
             in: .userDomainMask,
             appropriateFor: nil,
             create: true
         )
-        let dbURL = appSupport.appendingPathComponent(Constants.databaseFileName)
+        let dbURL = documents.appendingPathComponent(Constants.databaseFileName)
         let dbQueue = try DatabaseQueue(path: dbURL.path)
         return try AppDatabase(dbQueue)
     }
