@@ -4,12 +4,12 @@
 
 import Foundation
 
-enum ProcessingOutcome: Sendable {
+nonisolated enum ProcessingOutcome: Sendable {
     case success
     case failure
 }
 
-enum ProcessingError: LocalizedError, Sendable {
+nonisolated enum ProcessingError: LocalizedError, Sendable {
     case offline
     case simulated
 

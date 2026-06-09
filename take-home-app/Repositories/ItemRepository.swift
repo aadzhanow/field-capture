@@ -70,10 +70,11 @@ nonisolated final class ItemRepository: Sendable {
         )
 
         // stage-then-commit: files first, then one atomic DB transaction
+        let rows = photoRows
         do {
             try await dbWriter.write { db in
                 try item.insert(db)
-                for photo in photoRows {
+                for photo in rows {
                     try photo.insert(db)
                     for kind in DerivativeKind.allCases {
                         try Derivative(
@@ -236,6 +237,7 @@ nonisolated final class ItemRepository: Sendable {
 
     // MARK: - Observation (read)
 
+    @MainActor
     func observeGalleryItems(
         onChange: @escaping @MainActor ([GalleryItem]) -> Void,
         onError: @escaping @MainActor (Error) -> Void
@@ -283,6 +285,7 @@ nonisolated final class ItemRepository: Sendable {
         return rows.map(\.galleryItem)
     }
 
+    @MainActor
     func observeItemDetail(
         itemID: String,
         onChange: @escaping @MainActor (ItemDetail?) -> Void,

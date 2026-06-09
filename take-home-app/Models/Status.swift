@@ -4,7 +4,7 @@
 
 import Foundation
 
-enum DerivativeKind: String, CaseIterable, Codable, Sendable {
+nonisolated enum DerivativeKind: String, CaseIterable, Codable, Sendable {
     case thumbnail
     case card
     case preview
@@ -22,13 +22,13 @@ enum DerivativeKind: String, CaseIterable, Codable, Sendable {
     }
 }
 
-enum DerivativeStatus: String, Codable, Sendable {
+nonisolated enum DerivativeStatus: String, Codable, Sendable {
     case pending
     case ready
     case failed
 }
 
-enum ProcessingStatus: String, Codable, Sendable {
+nonisolated enum ProcessingStatus: String, Codable, Sendable {
     case notReady
     case ready
     case processing
@@ -36,7 +36,7 @@ enum ProcessingStatus: String, Codable, Sendable {
     case done
 }
 
-enum AssetStatus: Sendable {
+nonisolated enum AssetStatus: Sendable {
     case processing
     case failed
     case incomplete

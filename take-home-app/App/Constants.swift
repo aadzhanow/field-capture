@@ -4,7 +4,7 @@
 
 import Foundation
 
-enum Constants {
+nonisolated enum Constants {
     static let maxDerivativeBytes = 700_000
     static let eligibilityWindow: TimeInterval = 8 * 60 * 60
     
