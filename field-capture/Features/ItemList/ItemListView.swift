@@ -21,7 +21,11 @@ struct ItemListView: View {
     var body: some View {
         NavigationStack {
             StateContainer(vm.state) { sections in
-                ItemListContent(sections: sections, diContainer: diContainer)
+                ItemListContent(
+                    sections: sections,
+                    diContainer: diContainer,
+                    onDelete: { vm.deleteItem($0) }
+                )
             } empty: {
                 EmptyItemListView()
             }
@@ -73,6 +77,7 @@ struct ItemListView: View {
 private struct ItemListContent: View {
     let sections: [ItemListSection]
     let diContainer: DIContainer
+    let onDelete: (String) -> Void
 
     var body: some View {
         List {
@@ -81,6 +86,13 @@ private struct ItemListContent: View {
                     ForEach(section.items) { item in
                         NavigationLink(value: item.id) {
                             ItemCard(item: item, fileStorage: diContainer.fileStorage)
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                onDelete(item.id)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
                         }
                     }
                 }

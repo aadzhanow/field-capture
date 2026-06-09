@@ -32,4 +32,8 @@ final class ItemListViewModel {
     func refreshEligibility() async {
         try? await itemRepository.promoteEligibleItems()
     }
+
+    func deleteItem(_ id: String) {
+        Task { try? await itemRepository.deleteItem(id: id) }
+    }
 }

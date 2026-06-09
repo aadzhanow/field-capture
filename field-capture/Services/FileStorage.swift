@@ -60,4 +60,10 @@ nonisolated final class FileStorage: @unchecked Sendable {
     func derivativeRelativePath(itemID: String, photoID: String, kind: DerivativeKind) -> String {
         "\(Constants.derivativesDirectoryName)/\(itemID)/\(photoID)/\(kind.rawValue).jpg"
     }
+
+    /// Removes every original and derivative file for an item (whole-subtree delete).
+    func deleteItemFiles(itemID: String) {
+        try? delete("\(Constants.originalsDirectoryName)/\(itemID)")
+        try? delete("\(Constants.derivativesDirectoryName)/\(itemID)")
+    }
 }

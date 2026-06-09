@@ -96,6 +96,18 @@ nonisolated final class ItemRepository: Sendable {
         return itemID
     }
 
+    // MARK: - Delete
+
+    func deleteItem(id: String) async throws {
+        // DB first (CASCADE drops photos, derivatives, and the processing job),
+        // then the on-disk files — so a crash leaves at worst orphan files, never
+        // rows pointing at deleted files.
+        try await dbWriter.write { db in
+            try db.execute(sql: "DELETE FROM item WHERE id = ?", arguments: [id])
+        }
+        fileStorage.deleteItemFiles(itemID: id)
+    }
+
     // MARK: - Derivative pipeline support
 
     func pendingDerivativeWork(itemID: String) async throws -> [DerivativeWork] {
