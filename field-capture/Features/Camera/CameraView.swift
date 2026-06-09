@@ -6,6 +6,7 @@ import SwiftUI
 import UIKit
 
 struct CameraView: View {
+    let remainingSlots: Int
     let onCapture: (String, Data) -> Void
     let onDelete: (String) -> Void
 
@@ -13,9 +14,14 @@ struct CameraView: View {
     @State private var controller = CameraController()
     @State private var capturedPhotos: [SessionPhoto] = []
     @State private var showingPreviews = false
+    @State private var sessionBudget = 0
+    @State private var inFlightCount = 0
 
     private var capturedCount: Int { capturedPhotos.count }
     private var lastThumbnail: UIImage? { capturedPhotos.last?.thumbnail }
+    private var sessionCount: Int { capturedPhotos.count + inFlightCount }
+    private var photosLeft: Int { max(0, sessionBudget - sessionCount) }
+    private var canCapture: Bool { sessionCount < sessionBudget }
 
     var body: some View {
         NavigationStack {
@@ -47,6 +53,7 @@ struct CameraView: View {
             .toolbar { cameraToolbar }
             .toolbarBackground(.hidden, for: .navigationBar)
         }
+        .onAppear { sessionBudget = remainingSlots }
         .task { await controller.configureAndStart() }
         .onDisappear { controller.stop() }
         .sheet(isPresented: $showingPreviews) {
@@ -62,6 +69,11 @@ struct CameraView: View {
             }
         }
         if controller.status == .ready {
+            ToolbarItem(placement: .principal) {
+                Text(photosLeft > 0 ? "\(photosLeft) photos left" : "Limit reached")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button { controller.toggleFlash() } label: {
                     Image(systemName: controller.flashIconName)
@@ -84,6 +96,7 @@ struct CameraView: View {
                 CameraControlsBar(
                     capturedCount: capturedCount,
                     lastThumbnail: lastThumbnail,
+                    canCapture: canCapture,
                     onShutter: capture,
                     onThumbnailTap: { showingPreviews = true },
                     onDone: { dismiss() }
@@ -93,8 +106,11 @@ struct CameraView: View {
     }
 
     private func capture() {
+        guard canCapture else { return }
+        inFlightCount += 1
         let id = UUID().uuidString
         controller.capturePhoto { data in
+            inFlightCount -= 1
             guard let data else { return }
             onCapture(id, data)
             capturedPhotos.append(SessionPhoto(id: id, data: data, thumbnail: nil))

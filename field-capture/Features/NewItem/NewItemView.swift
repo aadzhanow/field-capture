@@ -38,7 +38,7 @@ struct NewItemView: View {
                 }
             }
             .fullScreenCover(isPresented: $showingCamera) {
-                CameraView { id, data in
+                CameraView(remainingSlots: vm.remainingPhotoSlots) { id, data in
                     Task { await vm.addPhoto(id: id, data: data) }
                 } onDelete: { id in
                     vm.removePhoto(id)
@@ -89,6 +89,7 @@ struct NewItemView: View {
 
                 PhotosPicker(
                     selection: $pickerItems,
+                    maxSelectionCount: vm.remainingPhotoSlots,
                     matching: .images,
                     photoLibrary: .shared()
                 ) {
@@ -96,6 +97,8 @@ struct NewItemView: View {
                 }
                 .buttonStyle(.plain)
             }
+            .disabled(!vm.canAddMorePhotos)
+            .opacity(vm.canAddMorePhotos ? 1 : 0.4)
 
             if isImporting {
                 HStack(spacing: 8) {
@@ -118,14 +121,19 @@ struct NewItemView: View {
             Text("^[\(vm.pendingPhotos.count) photo](inflect: true)")
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
+                if !vm.canAddMorePhotos {
+                    Text("Maximum \(Constants.maxPhotosPerItem) photos.")
+                        .foregroundStyle(.secondary)
+                }
                 if vm.validationError == .noPhotos {
                     Text(ItemValidationError.noPhotos.message)
+                        .foregroundStyle(.red)
                 }
                 if let saveError = vm.saveErrorMessage {
                     Text("Save failed: \(saveError)")
+                        .foregroundStyle(.red)
                 }
             }
-            .foregroundStyle(.red)
         }
         .listRowSeparator(.hidden)
         .onChange(of: pickerItems) { _, items in

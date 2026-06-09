@@ -8,6 +8,7 @@ import UIKit
 struct CameraControlsBar: View {
     let capturedCount: Int
     let lastThumbnail: UIImage?
+    let canCapture: Bool
     let onShutter: () -> Void
     let onThumbnailTap: () -> Void
     let onDone: () -> Void
@@ -37,6 +38,8 @@ struct CameraControlsBar: View {
                 .contentShape(.circle)
         }
         .buttonStyle(.plain)
+        .disabled(!canCapture)
+        .opacity(canCapture ? 1 : 0.4)
     }
 
     @ViewBuilder

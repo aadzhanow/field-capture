@@ -26,6 +26,14 @@ final class NewItemViewModel {
         !trimmedTitle.isEmpty && !pendingPhotos.isEmpty
     }
 
+    var canAddMorePhotos: Bool {
+        pendingPhotos.count < Constants.maxPhotosPerItem
+    }
+
+    var remainingPhotoSlots: Int {
+        max(0, Constants.maxPhotosPerItem - pendingPhotos.count)
+    }
+
     var isSaving: Bool {
         if case .saving = state { true } else { false }
     }
@@ -44,20 +52,22 @@ final class NewItemViewModel {
 
     func addPhotos(_ datas: [Data]) async {
         for data in datas {
+            guard canAddMorePhotos else { break }
             let thumbnail = await Task.detached(priority: .userInitiated) {
                 ImageDownsampling.thumbnail(from: data, maxPixelSize: 240)
             }.value
-            guard let thumbnail else { continue }
+            guard let thumbnail, canAddMorePhotos else { continue }
             pendingPhotos.append(PendingPhoto(id: UUID().uuidString, data: data, thumbnail: thumbnail))
         }
         if case .editing = state { state = .editing(validation: nil) }
     }
 
     func addPhoto(id: String, data: Data) async {
+        guard canAddMorePhotos else { return }
         let thumbnail = await Task.detached(priority: .userInitiated) {
             ImageDownsampling.thumbnail(from: data, maxPixelSize: 240)
         }.value
-        guard let thumbnail else { return }
+        guard let thumbnail, canAddMorePhotos else { return }
         pendingPhotos.append(PendingPhoto(id: id, data: data, thumbnail: thumbnail))
         if case .editing = state { state = .editing(validation: nil) }
     }
