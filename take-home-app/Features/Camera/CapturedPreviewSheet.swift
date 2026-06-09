@@ -69,13 +69,19 @@ struct CapturedPreviewSheet: View {
     }
 
     private var strip: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(photos) { photo in
-                    thumbnail(photo)
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(photos) { photo in
+                        thumbnail(photo).id(photo.id)
+                    }
                 }
+                .padding(.vertical, 2)
             }
-            .padding(.vertical, 2)
+            .onChange(of: selectedID) { _, id in
+                guard let id else { return }
+                withAnimation { proxy.scrollTo(id, anchor: .center) }
+            }
         }
     }
 

@@ -10,18 +10,25 @@ struct ThumbnailStrip: View {
     @Binding var selectedID: DetailPhoto.ID?
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(photos) { photo in
-                    ThumbnailCell(
-                        photo: photo,
-                        fileStorage: fileStorage,
-                        isSelected: photo.id == selectedID
-                    )
-                    .onTapGesture { selectedID = photo.id }
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(photos) { photo in
+                        ThumbnailCell(
+                            photo: photo,
+                            fileStorage: fileStorage,
+                            isSelected: photo.id == selectedID
+                        )
+                        .id(photo.id)
+                        .onTapGesture { selectedID = photo.id }
+                    }
                 }
+                .padding(.vertical, 2)
             }
-            .padding(.vertical, 2)
+            .onChange(of: selectedID) { _, id in
+                guard let id else { return }
+                withAnimation { proxy.scrollTo(id, anchor: .center) }
+            }
         }
     }
 }
