@@ -1,0 +1,38 @@
+//
+//  GalleryCard.swift
+//
+
+import SwiftUI
+
+/// One gallery row: representative thumbnail, title, photo count + date, and the
+/// item-level status badge. The thumbnail upgrades from placeholder → real image
+/// live as the representative photo's derivatives land.
+struct GalleryCard: View {
+    let item: GalleryItem
+    let fileStorage: FileStorage
+
+    var body: some View {
+        HStack(spacing: 12) {
+            AsyncImageView(
+                relativePaths: item.representativeImagePaths,
+                fileStorage: fileStorage,
+                targetPixelSize: 200
+            )
+            .frame(width: 64, height: 64)
+            .clipShape(.rect(cornerRadius: 10))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.title)
+                    .font(.headline)
+                    .lineLimit(1)
+                Text("^[\(item.photoCount) photo](inflect: true) · \(item.createdAt.formatted(date: .abbreviated, time: .shortened))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                StatusBadge.forGalleryItem(item)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 4)
+    }
+}

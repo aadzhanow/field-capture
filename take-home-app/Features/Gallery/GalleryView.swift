@@ -5,18 +5,21 @@
 import SwiftUI
 
 struct GalleryView: View {
+    private let diContainer: DIContainer
     @State private var vm: GalleryViewModel
+    @State private var showingNewItem = false
 
     init(
         diContainer: DIContainer
     ) {
+        self.diContainer = diContainer
         vm = .init(itemRepository: diContainer.itemRepository)
     }
 
     var body: some View {
         NavigationStack {
             StateContainer(vm.state) { sections in
-                GalleryList(sections: sections)
+                GalleryList(sections: sections, fileStorage: diContainer.fileStorage)
             } empty: {
                 EmptyGalleryView()
             }
@@ -24,23 +27,24 @@ struct GalleryView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
-                        // P2: profile.
+                        // P5: profile.
                     } label: {
                         Image(systemName: "person.crop.circle")
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Select") {
-                        // P2: multi-select.
+                        // Later: multi-select.
                     }
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                CameraButton(action: {
-                    
-                })
-                .padding(16)
+                CameraButton(action: { showingNewItem = true })
+                    .padding(16)
             }
+        }
+        .sheet(isPresented: $showingNewItem) {
+            NewItemView(diContainer: diContainer)
         }
         .task {
             vm.start()
@@ -55,39 +59,18 @@ struct GalleryView: View {
 
 private struct GalleryList: View {
     let sections: [GallerySection]
+    let fileStorage: FileStorage
 
     var body: some View {
         List {
             ForEach(sections) { section in
                 Section(section.title) {
                     ForEach(section.items) { item in
-                        GalleryRow(item: item)
+                        GalleryCard(item: item, fileStorage: fileStorage)
                     }
                 }
             }
         }
-    }
-}
-
-private struct GalleryRow: View {
-    let item: GalleryItem
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "photo")
-                .foregroundStyle(.secondary)
-                .frame(width: 44, height: 44)
-                .background(.quaternary, in: .rect(cornerRadius: 8))
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.title)
-                    .font(.headline)
-                Text("^[\(item.photoCount) photo](inflect: true) · \(item.createdAt.formatted(date: .abbreviated, time: .shortened))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(.vertical, 4)
     }
 }
 
