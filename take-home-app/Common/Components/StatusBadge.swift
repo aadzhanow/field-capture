@@ -4,21 +4,22 @@
 
 import SwiftUI
 
-/// Shared status pill used on gallery cards and (later) item detail. Pure value
-/// in → view out, so it previews in isolation.
 struct StatusBadge: View {
     let text: String
     let systemImage: String
     let tint: Color
 
     var body: some View {
-        Label(text, systemImage: systemImage)
-            .font(.caption2.weight(.semibold))
-            .lineLimit(1)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .foregroundStyle(tint)
-            .background(tint.opacity(0.15), in: .capsule)
+        HStack(spacing: 4) {
+            Image(systemName: systemImage)
+            Text(text)
+        }
+        .font(.caption2.weight(.semibold))
+        .lineLimit(1)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .foregroundStyle(tint)
+        .background(tint.opacity(0.15), in: .capsule)
     }
 }
 
@@ -27,11 +28,6 @@ extension StatusBadge {
         forItem(processingStatus: item.processingStatus, assetStatus: item.assetStatus)
     }
 
-    /// The item-level §9 badge. The processing states take precedence; while the
-    /// item is still `notReady` the badge reflects the derived asset status —
-    /// "Assets Failed" if any derivative failed, "Assets Processing" while still
-    /// generating, and "Waiting Until Eligible" once assets are complete but the
-    /// 8h window hasn't passed (a complete item is only `notReady` when young).
     static func forItem(processingStatus: ProcessingStatus, assetStatus: AssetStatus) -> StatusBadge {
         switch processingStatus {
         case .ready:
@@ -54,7 +50,6 @@ extension StatusBadge {
         }
     }
 
-    /// Asset-level pill for the detail screen (per-photo and item header).
     static func forAsset(_ status: AssetStatus) -> StatusBadge {
         switch status {
         case .complete:
