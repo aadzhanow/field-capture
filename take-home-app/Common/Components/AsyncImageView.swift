@@ -17,6 +17,8 @@ struct AsyncImageView: View {
     let fileStorage: FileStorage
     /// Max long edge (in pixels) to decode to.
     var targetPixelSize: CGFloat = 400
+    /// `.fill` crops to fill (default); `.fit` letterboxes to show the whole image.
+    var contentMode: ContentMode = .fill
 
     @State private var image: UIImage?
 
@@ -25,12 +27,15 @@ struct AsyncImageView: View {
             if let image {
                 Image(uiImage: image)
                     .resizable()
-                    .scaledToFill()
+                    .aspectRatio(contentMode: contentMode)
             } else {
                 placeholder
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Clip the aspect-fill overflow to our own bounds, so an image never
+        // pushes the surrounding layout wider than the screen.
+        .clipped()
         .task(id: relativePaths.first) {
             await load(relativePaths)
         }

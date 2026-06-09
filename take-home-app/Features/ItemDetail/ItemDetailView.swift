@@ -82,11 +82,13 @@ private struct ItemDetailContent: View {
         AsyncImageView(
             relativePaths: selectedPhoto?.displayImagePaths ?? [],
             fileStorage: fileStorage,
-            targetPixelSize: 1200
+            targetPixelSize: 1200,
+            contentMode: .fit
         )
         .frame(maxWidth: .infinity)
         .frame(height: 280)
-        .clipShape(.rect(cornerRadius: 16))
+        .padding(12)
+        .background(Color(.systemGray6), in: .rect(cornerRadius: 16))
     }
 
     private var metadata: some View {
