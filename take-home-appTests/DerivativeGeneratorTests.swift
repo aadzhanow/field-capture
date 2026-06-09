@@ -6,7 +6,7 @@ import CoreGraphics
 import ImageIO
 import UniformTypeIdentifiers
 import XCTest
-@testable import take_home_app
+@testable import field_capture
 
 final class DerivativeGeneratorTests: XCTestCase {
     private let generator = DefaultDerivativeGenerator()

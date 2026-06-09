@@ -10,7 +10,7 @@
 nonisolated final class CaptureSessionManager: @unchecked Sendable {
     let session = AVCaptureSession()
     private let photoOutput = AVCapturePhotoOutput()
-    private let queue = DispatchQueue(label: "com.take-home-app.camera.session")
+    private let queue = DispatchQueue(label: "com.field-capture.camera.session")
     private var currentInput: AVCaptureDeviceInput?
     private var delegates: [Int64: PhotoCaptureDelegate] = [:]
 
