@@ -13,7 +13,19 @@ Run the tests with **⌘U**, or:
 xcodebuild test -scheme field-capture -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
 ```
 
-All data lives in the app's **Documents** directory (`field-capture.sqlite` + an `images/` tree); the exact paths are printed to the console on launch (DEBUG builds).
+### Inspecting the data
+
+On launch (DEBUG builds) the app prints its on-disk container paths to the Xcode console — Home, Documents, the SQLite database, and the images directory:
+
+```text
+📦 App container
+Home: …/data/Application/<UUID>
+Documents: …/Documents
+Database: …/Documents/field-capture.sqlite
+Images: …/Documents/images
+```
+
+All persistent data lives under **Documents** (`field-capture.sqlite` plus an `images/` tree of originals and the five derivatives per photo). Paste the printed `Documents` path into Finder (⇧⌘G) to browse the database and image files. Image bytes are always files — never blobs in SQLite.
 
 ## How to test
 
