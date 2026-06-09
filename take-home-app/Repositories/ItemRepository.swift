@@ -8,12 +8,25 @@ import GRDB
 /// One captured photo's bytes + its capture position, handed to the save path.
 /// Carries compressed JPEG `Data` (not a decoded bitmap), so a 25-photo draft
 /// stays memory-light until it is staged to disk.
-struct PhotoDraft: Sendable {
+nonisolated struct PhotoDraft: Sendable {
     let data: Data
     let sortOrder: Int
 }
 
-final class ItemRepository {
+/// One unit of derivative work for the pipeline: which derivative row to fill,
+/// from which original file, at which size.
+nonisolated struct DerivativeWork: Sendable {
+    let derivativeID: String
+    let photoID: String
+    let originalPath: String
+    let kind: DerivativeKind
+}
+
+/// `nonisolated` + `Sendable`: this is a stateless wrapper over a Sendable
+/// `DatabaseWriter` and `FileStorage`, used from the main actor (gallery VM) and
+/// from the `ProcessingEngine` actor alike. Its async DB calls hop to GRDB's
+/// own queue, so heavy save/generation work never runs on the main actor.
+nonisolated final class ItemRepository: Sendable {
     private let dbWriter: any DatabaseWriter
     private let fileStorage: FileStorage
 
@@ -83,8 +96,8 @@ final class ItemRepository {
                     try photo.insert(db)
                     // Pre-seed all five derivative rows per photo as `pending`.
                     // The matrix of expected work lives in the DB from the start,
-                    // so P3 generation and P6 recovery are "find pending rows",
-                    // not guesswork.
+                    // so generation and recovery are "find pending rows", not
+                    // guesswork.
                     for kind in DerivativeKind.allCases {
                         try Derivative(
                             id: UUID().uuidString,
@@ -106,6 +119,85 @@ final class ItemRepository {
         return itemID
     }
 
+    // MARK: - Derivative pipeline support
+
+    /// All not-yet-ready derivative rows for an item (status `pending` or
+    /// `failed`), ordered so the representative photo and its smaller derivatives
+    /// generate first — the gallery thumbnail then upgrades fastest.
+    func pendingDerivativeWork(itemID: String) async throws -> [DerivativeWork] {
+        try await dbWriter.read { db in
+            let rows = try DerivativeWorkRow.fetchAll(db, sql: """
+                SELECT d.id AS derivativeID, p.id AS photoID,
+                       p.originalPath AS originalPath, d.kind AS kind
+                  FROM derivative d
+                  JOIN photo p ON p.id = d.photoId
+                 WHERE p.itemId = ? AND d.statusRaw IN ('pending', 'failed')
+                 ORDER BY p.sortOrder ASC,
+                          CASE d.kind
+                              WHEN 'thumbnail' THEN 0
+                              WHEN 'card' THEN 1
+                              WHEN 'preview' THEN 2
+                              WHEN 'detail' THEN 3
+                              ELSE 4
+                          END ASC
+                """, arguments: [itemID])
+            return rows.compactMap { row in
+                guard let kind = DerivativeKind(rawValue: row.kind) else { return nil }
+                return DerivativeWork(
+                    derivativeID: row.derivativeID,
+                    photoID: row.photoID,
+                    originalPath: row.originalPath,
+                    kind: kind
+                )
+            }
+        }
+    }
+
+    func markDerivativeReady(id: String, path: String, byteCount: Int) async throws {
+        try await dbWriter.write { db in
+            try db.execute(sql: """
+                UPDATE derivative SET statusRaw = ?, path = ?, byteCount = ? WHERE id = ?
+                """, arguments: [DerivativeStatus.ready.rawValue, path, byteCount, id])
+        }
+    }
+
+    func markDerivativeFailed(id: String) async throws {
+        try await dbWriter.write { db in
+            try db.execute(sql: """
+                UPDATE derivative SET statusRaw = ?, path = NULL, byteCount = NULL WHERE id = ?
+                """, arguments: [DerivativeStatus.failed.rawValue, id])
+        }
+    }
+
+    /// After generation, move a pre-submission item to `ready` when every photo is
+    /// derivative-complete and the 8h window has passed, else keep it `notReady`.
+    /// Never touches `processing`/`failed`/`done` — those are owned by the
+    /// processing flow (P5) and `done` is terminal.
+    func recomputeProcessingStatus(itemID: String) async throws {
+        try await dbWriter.write { db in
+            guard var item = try Item.fetchOne(db, key: itemID) else { return }
+            let status = ProcessingStatus(rawValue: item.processingStatusRaw) ?? .notReady
+            guard status == .notReady || status == .ready else { return }
+
+            let counts = try StatusCounts.fetchOne(db, sql: """
+                SELECT COUNT(*) AS total,
+                       COALESCE(SUM(CASE WHEN d.statusRaw = 'ready' THEN 1 ELSE 0 END), 0) AS ready
+                  FROM derivative d
+                  JOIN photo p ON p.id = d.photoId
+                 WHERE p.itemId = ?
+                """, arguments: [itemID]) ?? StatusCounts(total: 0, ready: 0)
+
+            let complete = counts.total > 0 && counts.ready == counts.total
+            let eligible = Date().timeIntervalSince1970 >= item.createdAt + Constants.eligibilityWindow
+            let newStatus: ProcessingStatus = (complete && eligible) ? .ready : .notReady
+
+            if newStatus.rawValue != item.processingStatusRaw {
+                item.processingStatusRaw = newStatus.rawValue
+                try item.update(db)
+            }
+        }
+    }
+
     // MARK: - Observation (read)
 
     func observeGalleryItems(
@@ -122,12 +214,11 @@ final class ItemRepository {
         )
     }
 
-    nonisolated static func fetchGalleryItems(_ db: Database) throws -> [GalleryItem] {
+    static func fetchGalleryItems(_ db: Database) throws -> [GalleryItem] {
         // The card's representative image is the first photo by capture order
         // (`min(sortOrder)`). We surface its `card` and `thumbnail` derivative
         // paths (only when `ready`) so the card upgrades live as derivatives land
-        // (precedence: card → thumbnail → placeholder). Both are null until P3
-        // generation completes.
+        // (precedence: card → thumbnail → placeholder).
         let rows = try GalleryItemRow.fetchAll(db, sql: """
             SELECT item.id, item.title, item.createdAt, item.processingStatusRaw,
                    COUNT(photo.id) AS photoCount,
@@ -187,4 +278,16 @@ private nonisolated struct GalleryItemRow: Decodable, FetchableRecord {
             representativeThumbnailPath: representativeThumbnailPath
         )
     }
+}
+
+private nonisolated struct DerivativeWorkRow: Decodable, FetchableRecord {
+    var derivativeID: String
+    var photoID: String
+    var originalPath: String
+    var kind: String
+}
+
+private nonisolated struct StatusCounts: Decodable, FetchableRecord {
+    var total: Int
+    var ready: Int
 }
