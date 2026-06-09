@@ -26,6 +26,7 @@ struct NewItemView: View {
                 detailsSection
                 photosSection
             }
+            .scrollDismissesKeyboard(.immediately)
             .navigationTitle("New Item")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
