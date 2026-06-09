@@ -26,22 +26,31 @@ struct GalleryView: View {
                 EmptyGalleryView()
             }
             .navigationTitle("Gallery")
+            .navigationDestination(for: String.self) { itemID in
+                ItemDetailView(diContainer: diContainer, itemID: itemID)
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         showingDebug = true
                     } label: {
-                        Label("Debug", systemImage: "hammer")
+                        Image(systemName: "hammer")
+                            .font(.system(size: 14))
                     }
                 }
-            }
-            .safeAreaInset(edge: .bottom) {
-                CameraButton(action: { showingNewItem = true })
-                    .padding(16)
+                
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showingNewItem = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
             }
         }
         .sheet(isPresented: $showingNewItem) {
             NewItemView(diContainer: diContainer)
+                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showingDebug) {
             DebugView(diContainer: diContainer)
@@ -55,7 +64,6 @@ struct GalleryView: View {
             #endif
         }
         .task {
-            // Re-evaluate the eligibility window while the gallery is open.
             while !Task.isCancelled {
                 await vm.refreshEligibility()
                 try? await Task.sleep(for: .seconds(30))
@@ -76,9 +84,7 @@ private struct GalleryList: View {
             ForEach(sections) { section in
                 Section(section.title) {
                     ForEach(section.items) { item in
-                        NavigationLink {
-                            ItemDetailView(diContainer: diContainer, itemID: item.id)
-                        } label: {
+                        NavigationLink(value: item.id) {
                             GalleryCard(item: item, fileStorage: diContainer.fileStorage)
                         }
                     }
